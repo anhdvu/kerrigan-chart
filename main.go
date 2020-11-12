@@ -109,26 +109,29 @@ func parseTime(ts string) int64 {
 func readSentryPrediction(path string, c chan bool, mq chan WsResponse) {
 	for {
 		if <-c {
-			log.Println("There was a file change.")
+			log.Printf("%v has been modified.")
+			data := make([]SentryPrediction, 0)
+			time.Sleep(2 * time.Second)
 			raw, err := ioutil.ReadFile(path)
 			if err != nil {
 				log.Panic(err)
 			}
-			data := make([]SentryPrediction, 0)
 			err = json.Unmarshal(raw, &data)
 			if err != nil {
 				log.Panic(err)
 			}
-
-			msg := WsResponse{}
-			msg.M = "sentry"
-			msg.D.T = parseTime(data[0].Time)
-			msg.D.V = data[0].Prediction
-			mq <- msg
-			time.Sleep(5 * time.Second)
+			if len(data) > 0 {
+				msg := WsResponse{}
+				msg.M = "sentry"
+				msg.D.T = parseTime(data[0].Time)
+				msg.D.V = data[0].Prediction
+				log.Println(msg)
+				mq <- msg
+			} else {
+				log.Println("There was something wrong with checker.txt.")
+			}
 		} else {
-			log.Println("There was NO file change for the past 60 seconds")
-			time.Sleep(5 * time.Second)
+			log.Println("No file modification detected for the last 30 seconds")
 		}
 	}
 }
@@ -154,15 +157,26 @@ func main() {
 	r.Get("/history", getHistory)
 	r.Get("/ws", wsHandler)
 
-	var interval time.Duration = 5
+	var interval time.Duration = 30
 	go util.WatchFile(sentryPredictionF, fc, interval)
 	go readSentryPrediction(sentryPredictionF, fc, msgQ)
 	go writer(msgQ)
+
+	go func() {
+		for {
+			pingMsg := WsResponse{}
+			pingMsg.M = "ping"
+			pingMsg.D.T = time.Now().Unix()
+			pingMsg.D.V = 1.111111
+			msgQ <- pingMsg
+			time.Sleep(3 * time.Minute)
+		}
+	}()
 
 	s := &http.Server{
 		Addr:    ":8080",
 		Handler: r,
 	}
-
+	log.Println("Server listens on port", s.Addr)
 	log.Fatal(s.ListenAndServe())
 }

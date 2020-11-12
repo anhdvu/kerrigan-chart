@@ -112,16 +112,33 @@ k5mSocket.onmessage = (message) => {
 }
 
 // real time update for sentry data
-const sentryURI = 'ws://mooner.dace.dev/ws'
+const sentryURI = 'wss://mooner.dace.dev/ws'
 const sentrySocket = new WebSocket(sentryURI)
 
+sentrySocket.onopen = (event) => {
+    console.log("successfully connected to Sentry socket!")
+}
+
+sentrySocket.onclose = (event) => {
+    console.log("the websocket connection closed for some reason.")
+}
 sentrySocket.onmessage = (message) => {
     let data = JSON.parse(message.data);
-    let rtSentryData = {
-        time: data.d.t,
-        value: data.d.v
+    console.log(data)
+    if (data.m == "sentry") {
+        let rtSentryData = {
+            time: data.d.t,
+            value: data.d.v
+        }
+        sentrySeries.update(rtSentryData)
+    } else {
+        console.log("PingPong message received!")
     }
-    sentrySeries.update(rtSentryData)
+
+}
+
+sentrySocket.onerror = (event) => {
+    console.log("There was some error with the websocket connection.")
 }
 // WORK IN PROGRESS
 // var markers = [];
