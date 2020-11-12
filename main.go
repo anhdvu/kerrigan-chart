@@ -109,9 +109,9 @@ func parseTime(ts string) int64 {
 func readSentryPrediction(path string, c chan bool, mq chan WsResponse) {
 	for {
 		if <-c {
-			log.Printf("%v has been modified.")
+			log.Printf("%v has been modified.", path)
 			data := make([]SentryPrediction, 0)
-			time.Sleep(2 * time.Second)
+			time.Sleep(5 * time.Second)
 			raw, err := ioutil.ReadFile(path)
 			if err != nil {
 				log.Panic(err)
@@ -128,7 +128,7 @@ func readSentryPrediction(path string, c chan bool, mq chan WsResponse) {
 				log.Println(msg)
 				mq <- msg
 			} else {
-				log.Println("There was something wrong with checker.txt.")
+				log.Println("checker.txt seems empty for now.")
 			}
 		} else {
 			log.Println("No file modification detected for the last 30 seconds")
