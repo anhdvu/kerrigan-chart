@@ -27,8 +27,8 @@ var upgrader = websocket.Upgrader{
 var (
 	root, _           = os.Getwd()
 	kDir              = filepath.Dir(root)
-	fDir              = filepath.Join(root, "frontend")
-	staticDir         = filepath.Join(fDir, "static")
+	fDir              = "frontend"
+	staticDir         = filepath.Join("frontend", "static")
 	sentryHistoryF    = filepath.Join(kDir, "historical_delta.txt")
 	sentryPredictionF = filepath.Join(kDir, "checker.txt")
 )
@@ -89,7 +89,6 @@ func getHistory(w http.ResponseWriter, r *http.Request) {
 		response[i].Time = parseTime(e.Time)
 		response[i].Value = e.Prediction
 	}
-	w.Header().Set("content-type", "application/json; charset=utf-8")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		log.Panic(err)
@@ -148,13 +147,25 @@ func writer(msgQ chan WsResponse) {
 func main() {
 	msgQ := make(chan WsResponse, 10)
 	fc := make(chan bool, 1)
-	r := chi.NewMux()
+	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 	r.Handle("/", http.FileServer(http.Dir(fDir)))
+
+	fmt.Println(root)
+	fmt.Println(staticDir)
+	fmt.Println(filepath.Join(staticDir, "kerrigan-chart.js"))
+
+	staticfs := http.FileServer(http.Dir(staticDir))
+	r.Handle("/static/", http.StripPrefix("/static/", staticfs))
+	// r.Handle("/static/", http.FileServer(http.Dir(fDir)))
+
 	r.Get("/chart", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(staticDir, "kerrigan-chart.js"))
 	})
-	r.Get("/history", getHistory)
+
+	r.Get("/history", setCommonHeaders(getHistory))
+
 	r.Get("/ws", wsHandler)
 
 	var interval time.Duration = 30
@@ -179,4 +190,16 @@ func main() {
 	}
 	log.Println("Server listens on port", s.Addr)
 	log.Fatal(s.ListenAndServe())
+}
+
+func setCommonHeaders(f func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if origin := r.Header.Get("Origin"); origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		f(w, r)
+	}
 }

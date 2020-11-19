@@ -5,9 +5,11 @@
 //     let newDate = new Date(utc_t);
 //     return newDate.getTime() / 1000;
 // }
+// Live price on title
+let title = document.getElementById("title");
 
 // Create base chart
-var chart = LightweightCharts.createChart(document.getElementById('chart-v1'), {
+const chart = LightweightCharts.createChart(document.getElementById('chart-v1'), {
     width: 1280,
     height: 720,
     layout: {
@@ -36,7 +38,7 @@ var chart = LightweightCharts.createChart(document.getElementById('chart-v1'), {
     watermark: {
         color: 'rgba(11, 94, 29, 0.4)',
         visible: true,
-        text: 'Kerrigan Chart v0.1',
+        text: 'Kerrigan Chart v0.2',
         fontSize: 32,
         horzAlign: 'left',
         vertAlign: 'bottom',
@@ -45,12 +47,9 @@ var chart = LightweightCharts.createChart(document.getElementById('chart-v1'), {
 
 // Candlesticks data
 let chartData = [];
-let candleSeries = chart.addCandlestickSeries();
+const candleSeries = chart.addCandlestickSeries();
 fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=1000')
     .then(function (response) {
-        for (var pair of response.headers.entries()) {
-            console.log(pair[0] + ': ' + pair[1]);
-        }
         return response.json();
     })
     .then(function (data) {
@@ -95,10 +94,6 @@ const baseURL = 'wss://stream.binance.com:9443';
 const k5mStreamURI = baseURL + '/ws/btcusdt@kline_5m';
 const k5mSocket = new WebSocket(k5mStreamURI);
 
-// tradeSocket.onmessage = (message) => {
-//     document.getElementById("trade").textContent = message.data;
-// }
-
 k5mSocket.onmessage = (message) => {
     let data = JSON.parse(message.data);
     let rtCandlestickPrice = {
@@ -109,6 +104,7 @@ k5mSocket.onmessage = (message) => {
         open: data.k.o
     }
     candleSeries.update(rtCandlestickPrice);
+    title.textContent = "Kerrigan - " + parseFloat(data.k.c).toFixed(2);
 }
 
 // real time update for sentry data
@@ -124,7 +120,6 @@ sentrySocket.onclose = (event) => {
 }
 sentrySocket.onmessage = (message) => {
     let data = JSON.parse(message.data);
-    console.log(data)
     if (data.m == "sentry") {
         let rtSentryData = {
             time: data.d.t,
@@ -141,7 +136,7 @@ sentrySocket.onerror = (event) => {
     console.log("There was some error with the websocket connection.")
 }
 // WORK IN PROGRESS
-// var markers = [];
+// let markers = [];
 // markers.push({ time: data[88].time, position: 'aboveBar', color: '#e91e63', shape: 'arrowDown', text: 'Sell @ ' + data[88].high.toFixed(2) });
 // markers.push({ time: data[13].time, position: 'belowBar', color: '#2196F3', shape: 'arrowUp', text: 'Buy @ ' + data[13].low.toFixed(2) });
 // candleSeries.setMarkers(markers);
