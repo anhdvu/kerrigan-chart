@@ -188,7 +188,7 @@ func main() {
 		Addr:    ":8080",
 		Handler: r,
 	}
-	log.Println("Server listens on port", s.Addr)
+	log.Println("Server v0.2 listens on port", s.Addr)
 	log.Fatal(s.ListenAndServe())
 }
 
