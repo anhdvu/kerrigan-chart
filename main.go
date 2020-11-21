@@ -31,6 +31,7 @@ var (
 	staticDir         = filepath.Join("frontend", "static")
 	sentryHistoryF    = filepath.Join(kDir, "historical_delta.txt")
 	sentryPredictionF = filepath.Join(kDir, "checker.txt")
+	recordF           = filepath.Join(kDir, "logs", "records.txt")
 )
 
 type Sentry struct {
@@ -93,6 +94,15 @@ func getHistory(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Panic(err)
 	}
+}
+
+func getRecords(w http.ResponseWriter, r *http.Request) {
+	raw, err := ioutil.ReadFile(recordF)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	w.Write(raw)
 }
 
 func parseTime(ts string) int64 {
@@ -165,6 +175,7 @@ func main() {
 	})
 
 	r.Get("/history", setCommonHeaders(getHistory))
+	r.Get("/records", getRecords)
 
 	r.Get("/ws", wsHandler)
 
