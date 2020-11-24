@@ -58,11 +58,6 @@ type WsResponse struct {
 	} `json:"d"`
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Hey yo!")
-	w.Write([]byte("Hey yo!"))
-}
-
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -94,6 +89,10 @@ func getHistory(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Panic(err)
 	}
+}
+
+func getMarkers(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Placeholder for markers data."))
 }
 
 func getRecords(w http.ResponseWriter, r *http.Request) {
@@ -160,15 +159,12 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Handle("/", http.FileServer(http.Dir(fDir)))
+	//r.Handle("/", http.FileServer(http.Dir(fDir)))
+	FileServer(r)
 
 	fmt.Println(root)
 	fmt.Println(staticDir)
 	fmt.Println(filepath.Join(staticDir, "kerrigan-chart.js"))
-
-	staticfs := http.FileServer(http.Dir(staticDir))
-	r.Handle("/static/", http.StripPrefix("/static/", staticfs))
-	// r.Handle("/static/", http.FileServer(http.Dir(fDir)))
 
 	r.Get("/chart", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(staticDir, "kerrigan-chart.js"))
@@ -176,6 +172,7 @@ func main() {
 
 	r.Get("/history", setCommonHeaders(getHistory))
 	r.Get("/records", getRecords)
+	r.Get("/markers", setCommonHeaders(getMarkers))
 
 	r.Get("/ws", wsHandler)
 
@@ -191,7 +188,7 @@ func main() {
 			pingMsg.D.T = time.Now().Unix()
 			pingMsg.D.V = 1.111111
 			msgQ <- pingMsg
-			time.Sleep(3 * time.Minute)
+			time.Sleep(4 * time.Minute)
 		}
 	}()
 
@@ -199,7 +196,7 @@ func main() {
 		Addr:    ":8080",
 		Handler: r,
 	}
-	log.Println("Server v0.2 listens on port", s.Addr)
+	log.Println("Server v0.3 listens on port", s.Addr)
 	log.Fatal(s.ListenAndServe())
 }
 
@@ -213,4 +210,16 @@ func setCommonHeaders(f func(http.ResponseWriter, *http.Request)) http.HandlerFu
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		f(w, r)
 	}
+}
+
+func FileServer(router *chi.Mux) {
+	root := fDir
+	fs := http.FileServer(http.Dir(root))
+	router.Get("/*", func(w http.ResponseWriter, r *http.Request) {
+		if _, err := os.Stat(root + r.RequestURI); os.IsNotExist(err) {
+			http.StripPrefix(r.RequestURI, fs).ServeHTTP(w, r)
+		} else {
+			fs.ServeHTTP(w, r)
+		}
+	})
 }

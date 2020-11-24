@@ -1,15 +1,9 @@
 // Live price on title
 const title = document.getElementById("title");
 const legend = document.getElementById("legend");
-let currentOHLC = {
-    open: 0,
-    high: 0,
-    low: 0,
-    close: 0
-}
 
 // Create base chart
-const chart = LightweightCharts.createChart(document.getElementById('chart-v1'), {
+const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     width: 1280,
     height: 720,
     layout: {
@@ -21,13 +15,25 @@ const chart = LightweightCharts.createChart(document.getElementById('chart-v1'),
         timeVisible: true,
         rightOffset: 2
     },
+    grid: {
+        horzLines: {
+            color: '#F0F3FA',
+            style: LightweightCharts.LineStyle.Dotted,
+            visible: false
+        },
+        vertLines: {
+            color: '#F0F3FA',
+            style: LightweightCharts.LineStyle.Dotted,
+            visible: false
+        },
+    },
     crosshair: {
         mode: LightweightCharts.CrosshairMode.Normal,
     },
     watermark: {
         color: 'rgba(139, 65, 236, 0.6)',
         visible: true,
-        text: 'Kerrigan Chart v0.4',
+        text: 'Kerrigan Chart v0.4.6',
         fontSize: 32,
         horzAlign: 'left',
         vertAlign: 'bottom',
@@ -44,11 +50,11 @@ fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=10
     .then(function (data) {
         for (let e of data) {
             chartData.push({
-                close: parseFloat(e[4]),
+                time: e[0] / 1000,
+                open: parseFloat(e[1]),
                 high: parseFloat(e[2]),
                 low: parseFloat(e[3]),
-                open: parseFloat(e[1]),
-                time: e[0] / 1000
+                close: parseFloat(e[4])
             });
         };
         candleSeries.setData(chartData);
@@ -63,13 +69,13 @@ let historySentryData = [];
 const outstandingSeries = chart.addLineSeries({
     color: '#f48fb1',
     lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.Dashed
+    lineStyle: LightweightCharts.LineStyle.LargeDashed
 });
 let outstandingSentryData = [];
 const lowballSeries = chart.addLineSeries({
     color: '#f48fb1',
     lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.Dashed
+    lineStyle: LightweightCharts.LineStyle.LargeDashed
 });
 let lowballSentryData = [];
 fetch('/history')
@@ -119,13 +125,6 @@ k5mSocket.onmessage = (message) => {
     };
     candleSeries.update(rtCandlestickPrice);
     title.textContent = "Kerrigan - " + parseFloat(data.k.c).toFixed(2);
-    currentOHLC = {
-        open: parseFloat(rtCandlestickPrice.open).toFixed(2),
-        high: parseFloat(rtCandlestickPrice.high).toFixed(2),
-        low: parseFloat(rtCandlestickPrice.low).toFixed(2),
-        close: parseFloat(rtCandlestickPrice.close).toFixed(2)
-    }
-    legend.textContent = `O ${currentOHLC.open} - H ${currentOHLC.high} - L ${currentOHLC.low} - C ${currentOHLC.close}`;
 };
 
 
@@ -171,7 +170,8 @@ sentrySocket.onerror = (event) => {
 // OHLC with crosshair move
 chart.subscribeCrosshairMove(function (param) {
     if (param === undefined || param.time === undefined || param.point.x < 0 || param.point.y < 0) {
-        legend.textContent = `O ${currentOHLC.open} - H ${currentOHLC.high} - L ${currentOHLC.low} - C ${currentOHLC.close}`
+        // legend.textContent = `O ${currentOHLC.open} - H ${currentOHLC.high} - L ${currentOHLC.low} - C ${currentOHLC.close}`;
+        legend.textContent = ``;
     } else {
         let price = param.seriesPrices.get(candleSeries);
         try {
@@ -180,7 +180,7 @@ chart.subscribeCrosshairMove(function (param) {
                 high: parseFloat(price.high).toFixed(2),
                 low: parseFloat(price.low).toFixed(2),
                 close: parseFloat(price.close).toFixed(2)
-            }
+            };
             legend.textContent = `O ${OHLC.open} - H ${OHLC.high} - L ${OHLC.low} - C ${OHLC.close}`;
         }
         catch (err) {
