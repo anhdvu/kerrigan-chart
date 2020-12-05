@@ -1,19 +1,31 @@
-// Live price on title
-const title = document.getElementById("title");
-const legend = document.getElementById("legend");
+const title = document.getElementById('title');
+const legend = document.getElementById('legend');
+function convertTime(t) {
+    const now = new Date(t);
+    return now.toUTCString().substr(17, 8);
+}
 
 // Create base chart
 const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
-    width: 1280,
+    width: 1600,
     height: 720,
     layout: {
-        backgroundColor: '#FFF',
-        textColor: '#000',
+        backgroundColor: 'rgba(19, 23, 34, 1)',
+        textColor: 'rgba(255, 255, 255, 0.8)',
         fontSize: 16,
+    },
+    priceScale: {
+        scaleMargins: {
+            top: 0.05,
+            bottom: 0.05
+        },
+        entireTextOnly: true
     },
     timeScale: {
         timeVisible: true,
-        rightOffset: 2
+        rightOffset: 16,
+        fixLeftEdge: true,
+        rightBarStaysOnScroll: false
     },
     grid: {
         horzLines: {
@@ -31,23 +43,68 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
         mode: LightweightCharts.CrosshairMode.Normal,
     },
     watermark: {
-        color: 'rgba(139, 65, 236, 0.6)',
+        color: 'rgba(0, 150, 235, 1)',
         visible: true,
-        text: 'Kerrigan Chart v0.4.6',
-        fontSize: 32,
+        text: 'AESXII Chart v0.4.16',
+        fontSize: 24,
         horzAlign: 'left',
         vertAlign: 'bottom',
     },
 });
 
-// Candlestick series
+// Price series
 const candleSeries = chart.addCandlestickSeries();
 let chartData = [];
-fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=1000')
-    .then(function (response) {
-        return response.json();
-    })
-    .then(function (data) {
+const volumeSeries = chart.addHistogramSeries({
+    priceScaleId: '',
+    priceFormat: {
+        type: 'volume',
+        precision: 3,
+    },
+    scaleMargins: {
+        top: 0.6,
+        bottom: 0,
+    },
+    lastValueVisible: false,
+    priceLineVisible: false
+});
+let volumeData = [];
+
+// Sentry related series
+const sentrySeriesConfig = {
+    priceLineVisible: true,
+    priceLineColor: '#0096eb',
+    priceLineWidth: 1,
+    priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
+    priceLineSource: LightweightCharts.PriceLineSource.LastBar,
+    lastValueVisible: true,
+    color: '#0096eb',
+    lineWidth: 2,
+    lineStyle: LightweightCharts.LineStyle.Solid,
+}
+const sentrySeries = chart.addLineSeries(sentrySeriesConfig);
+let historySentryData = [];
+const sN300Series = chart.addLineSeries(sentrySeriesConfig);
+let sN300SentryData = [];
+const sN600Series = chart.addLineSeries(sentrySeriesConfig);
+let sN600SentryData = [];
+const sP300Series = chart.addLineSeries(sentrySeriesConfig);
+let sP300SentryData = [];
+const sP600Series = chart.addLineSeries(sentrySeriesConfig);
+let sP600SentryData = [];
+
+const fetchKline = async () => {
+    const timeoffset = 60 * 60 * 24 * 30 * 1000;
+    let startTime = Date.now() - timeoffset;
+    const limit = 1000;
+    const interval = '5m';
+    const symbol = 'BTCUSDT';
+    let volColor = '';
+
+    while (true) {
+        let response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&startTime=${startTime}&limit=${limit}`);
+        if (!response.ok) break;
+        let data = await response.json();
         for (let e of data) {
             chartData.push({
                 time: e[0] / 1000,
@@ -56,116 +113,173 @@ fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=10
                 low: parseFloat(e[3]),
                 close: parseFloat(e[4])
             });
+            if (parseFloat(e[4]) < parseFloat(e[1])) {
+                volColor = 'rgba(255,82,82, 0.3)';
+            } else {
+                volColor = 'rgba(0, 150, 136, 0.3)';
+            }
+            volumeData.push({
+                time: e[0] / 1000,
+                value: parseFloat(e[5]),
+                color: volColor
+            })
         };
-        candleSeries.setData(chartData);
-    })
-    .catch(function (error) {
-        console.log('Request failed', error)
-    });
+        if (data.length < limit) {
+            candleSeries.setData(chartData);
+            volumeSeries.setData(volumeData);
+            break;
+        }
+        startTime = data[data.length - 1][6];
+    }
+}
 
-// All sentry-related series
-const sentrySeries = chart.addLineSeries();
-let historySentryData = [];
-const outstandingSeries = chart.addLineSeries({
-    color: '#f48fb1',
-    lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.LargeDashed
-});
-let outstandingSentryData = [];
-const lowballSeries = chart.addLineSeries({
-    color: '#f48fb1',
-    lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.LargeDashed
-});
-let lowballSentryData = [];
-fetch('/history')
-    .then(function (response) {
-        return response.json();
-    })
-    .then(function (data) {
-        for (let e of data) {
-            historySentryData.push({
-                time: e.time,
-                value: e.value,
-            });
-            outstandingSentryData.push({
-                time: e.time,
-                value: e.value + 300
-            });
-            lowballSentryData.push({
-                time: e.time,
-                value: e.value - 300
-            });
-        };
-        sentrySeries.setData(historySentryData);
-        outstandingSeries.setData(outstandingSentryData);
-        lowballSeries.setData(lowballSentryData);
-    })
-    .catch(function (error) {
-        console.log('Request failed', error)
-    });
+const fetchSentryHistory = async () => {
+    let response = await fetch('/history');
+    if (!response.ok) {
+        console.log('Fetch failed!')
+    }
+    let data = await response.json();
+    for (let e of data) {
+        historySentryData.push({
+            time: e.time,
+            value: e.value,
+        });
+        sN300SentryData.push({
+            time: e.time,
+            value: e.value + 300
+        });
+        sN600SentryData.push({
+            time: e.time,
+            value: e.value + 600
+        })
+        sP300SentryData.push({
+            time: e.time,
+            value: e.value - 300
+        });
+        sP600SentryData.push({
+            time: e.time,
+            value: e.value - 600
+        });
+    };
+    sentrySeries.setData(historySentryData);
+    sN300Series.setData(sN300SentryData);
+    sN600Series.setData(sN600SentryData);
+    sP300Series.setData(sP300SentryData);
+    sP600Series.setData(sP600SentryData);
+}
+fetchKline();
+fetchSentryHistory();
+
+// let markers = [];
+// markers.push({ time: 1606897800, position: 'aboveBar', color: '#e91e63', shape: 'arrowDown', size: 2, text: 'S @ 19303.39' });
+// markers.push({ time: 1606843200, position: 'belowBar', color: '#2196F3', shape: 'arrowUp', size: 2, text: 'B @ 18913.98' });
+// candleSeries.setMarkers(markers);
 
 // ################
 // Websocket
 // ################
-const baseURL = 'wss://stream.binance.com:9443';
-// const tradeStream = baseURL + '/ws/btcusdt@trade';
-// const tradeSocket = new WebSocket(tradeStream);
-const k5mStreamURI = baseURL + '/ws/btcusdt@kline_5m';
-const k5mSocket = new WebSocket(k5mStreamURI);
+const tf1mtds = document.getElementsByClassName('stats 1m');
+const tf5mtds = document.getElementsByClassName('stats 5m');
+const klineConnect = () => {
+    const baseURL = 'wss://stream.binance.com:9443';
+    const kline5mStreamName = 'btcusdt@kline_5m';
+    const kline1mStreamName = 'btcusdt@kline_1m';
+    const multiKlineStreamURI = `${baseURL}/stream?streams=${kline5mStreamName}/${kline1mStreamName}`;
+    const klineStreamURI = baseURL + '/ws/' + kline5mStreamName;
+    const klineSocket = new WebSocket(klineStreamURI);
+    let volColor = '';
 
-k5mSocket.onmessage = (message) => {
-    let data = JSON.parse(message.data);
-    let rtCandlestickPrice = {
-        time: data.k.t / 1000,
-        close: data.k.c,
-        high: data.k.h,
-        low: data.k.l,
-        open: data.k.o
+    klineSocket.onmessage = (message) => {
+        let data = JSON.parse(message.data);
+        let rtCandlestickPrice = {
+            time: data.k.t / 1000,
+            close: data.k.c,
+            high: data.k.h,
+            low: data.k.l,
+            open: data.k.o
+        };
+        if (data.k.c < data.k.o) {
+            volColor = 'rgba(255,82,82, 0.3)';
+        } else {
+            volColor = 'rgba(0, 150, 136, 0.3)';
+        }
+        let rtVolumeData = {
+            time: data.k.t / 1000,
+            value: data.k.v,
+            color: volColor
+        }
+        candleSeries.update(rtCandlestickPrice);
+        volumeSeries.update(rtVolumeData);
+        title.textContent = 'AESXII Chart - ' + parseFloat(data.k.c).toFixed(2);
+        tf5mtds[1].innerHTML = '<p>' + convertTime(data.k.t) + '</p>';
+        tf5mtds[2].innerHTML = '<p>' + convertTime(data.k.T) + '</p>';
+        tf5mtds[3].innerHTML = '<p>' + parseFloat(data.k.c).toFixed(2) + '</p>';
+        if (data.k.c < data.k.o) {
+            tf5mtds[3].style.backgroundColor = 'rgba(255,82,82, 0.8)';
+        } else {
+            tf5mtds[3].style.backgroundColor = 'rgba(0, 150, 136, 0.8)';
+        }
+
+        tf5mtds[4].innerHTML = '<p>' + parseFloat(data.k.v).toFixed(3) + "K" + '</p>';
+        tf5mtds[5].innerHTML = '<p>' + parseFloat(data.k.V / data.k.v).toFixed(4) + '</p>';
+        tf5mtds[6].innerHTML = '<p>' + data.k.n + '</p>';
     };
-    candleSeries.update(rtCandlestickPrice);
-    title.textContent = "Kerrigan - " + parseFloat(data.k.c).toFixed(2);
-};
-
+}
 
 // real time data for sentry series
-const sentryURI = 'wss://mooner.dace.dev/ws';
-const sentrySocket = new WebSocket(sentryURI);
+const sentryConnect = () => {
+    const sentryURI = 'wss://mooner.dace.dev/ws';
+    const sentrySocket = new WebSocket(sentryURI);
 
-sentrySocket.onopen = (event) => {
-    console.log("successfully connected to Sentry socket!")
-}
-
-sentrySocket.onclose = (event) => {
-    console.log("the websocket connection closed for some reason.")
-}
-sentrySocket.onmessage = (message) => {
-    let data = JSON.parse(message.data);
-    if (data.m == "sentry") {
-        let rtSentryData = {
-            time: data.d.t,
-            value: data.d.v
-        };
-        let rtOutstandingSentryData = {
-            time: data.d.t,
-            value: data.d.v + 300
-        };
-        let rtLowballSentryData = {
-            time: data.d.t,
-            value: data.d.v - 300
-        };
-        sentrySeries.update(rtSentryData);
-        outstandingSeries.update(rtOutstandingSentryData);
-        lowballSeries.update(rtLowballSentryData);
-    } else {
-        console.log("PingPong message received!")
+    sentrySocket.onopen = (event) => {
+        console.log('successfully connected to Sentry socket!');
     }
-
+    sentrySocket.onclose = (event) => {
+        console.log('the websocket connection closed for some reason.');
+        setTimeout(function () {
+            fetchKline();
+            sentryConnect();
+        }, 1000);
+    }
+    sentrySocket.onmessage = (message) => {
+        let data = JSON.parse(message.data);
+        if (data.m == 'sentry') {
+            let rtSentryData = {
+                time: data.d.t,
+                value: data.d.v
+            };
+            let rtN300SentryData = {
+                time: data.d.t,
+                value: data.d.v + 300
+            };
+            let rtN600SentryData = {
+                time: data.d.t,
+                value: data.d.v + 600
+            };
+            let rtP300SentryData = {
+                time: data.d.t,
+                value: data.d.v - 300
+            };
+            let rtP600SentryData = {
+                time: data.d.t,
+                value: data.d.v - 600
+            };
+            sentrySeries.update(rtSentryData);
+            sN300Series.update(rtN300SentryData);
+            sN600Series.update(rtN600SentryData);
+            sP300Series.update(rtP300SentryData);
+            sP600Series.update(rtP600SentryData);
+        } else {
+            console.log('ping');
+        }
+    }
+    sentrySocket.onerror = (event) => {
+        console.log('There was some error with the websocket connection.');
+    }
 }
 
-sentrySocket.onerror = (event) => {
-    console.log("There was some error with the websocket connection.")
-}
+klineConnect();
+sentryConnect();
 
 // OHLC with crosshair move
 chart.subscribeCrosshairMove(function (param) {
@@ -174,6 +288,7 @@ chart.subscribeCrosshairMove(function (param) {
         legend.textContent = ``;
     } else {
         let price = param.seriesPrices.get(candleSeries);
+        let volume = param.seriesPrices.get(volumeSeries);
         try {
             let OHLC = {
                 open: parseFloat(price.open).toFixed(2),
@@ -181,16 +296,10 @@ chart.subscribeCrosshairMove(function (param) {
                 low: parseFloat(price.low).toFixed(2),
                 close: parseFloat(price.close).toFixed(2)
             };
-            legend.textContent = `O ${OHLC.open} - H ${OHLC.high} - L ${OHLC.low} - C ${OHLC.close}`;
+            legend.innerHTML = `<p>O ${OHLC.open} - H ${OHLC.high} - L ${OHLC.low} - C ${OHLC.close} - Vol ${volume}</p>`;
         }
         catch (err) {
-            console.log("No data at given time yet.")
+            console.log('No data at given time yet.')
         }
     }
 });
-
-// WORK IN PROGRESS
-// let markers = [];
-// markers.push({ time: data[88].time, position: 'aboveBar', color: '#e91e63', shape: 'arrowDown', text: 'Sell @ ' + data[88].high.toFixed(2) });
-// markers.push({ time: data[13].time, position: 'belowBar', color: '#2196F3', shape: 'arrowUp', text: 'Buy @ ' + data[13].low.toFixed(2) });
-// candleSeries.setMarkers(markers);

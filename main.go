@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"kerrigan-chart/util"
 	"log"
@@ -85,7 +84,7 @@ func getHistory(w http.ResponseWriter, r *http.Request) {
 		response[i].Time = parseTime(e.Time)
 		response[i].Value = e.Prediction
 	}
-	err = json.NewEncoder(w).Encode(response)
+	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -136,17 +135,37 @@ func readSentryPrediction(path string, c chan bool, mq chan WsResponse) {
 				log.Println(msg)
 				mq <- msg
 			} else {
-				log.Println("checker.txt seems empty for now.")
+				log.Println("checker.txt is empty for now.")
 			}
 		} else {
-			log.Println("No file modification detected for the last 30 seconds")
+			log.Println("No file modification detected for the last 30 seconds.")
 		}
 	}
 }
 
-func writer(msgQ chan WsResponse) {
+func makeMarkerFile(c chan bool) {
+	if <-c {
+		log.Println("There seems to be a new trade.")
+
+	} else {
+		log.Println("records.txt has not changed for the last hour.")
+	}
+}
+
+func ping(mq chan<- WsResponse) {
 	for {
-		msg := <-msgQ
+		pingMsg := WsResponse{}
+		pingMsg.M = "ping"
+		pingMsg.D.T = time.Now().Unix()
+		pingMsg.D.V = 1.111111
+		mq <- pingMsg
+		time.Sleep(4 * time.Minute)
+	}
+}
+
+func writer(mq <-chan WsResponse) {
+	for {
+		msg := <-mq
 		for client := range clients {
 			client.WriteJSON(msg)
 		}
@@ -155,16 +174,12 @@ func writer(msgQ chan WsResponse) {
 
 func main() {
 	msgQ := make(chan WsResponse, 10)
-	fc := make(chan bool, 1)
+	checkerChannel := make(chan bool, 1)
+	// markerChannel := make(chan bool, 1)
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	//r.Handle("/", http.FileServer(http.Dir(fDir)))
 	FileServer(r)
-
-	fmt.Println(root)
-	fmt.Println(staticDir)
-	fmt.Println(filepath.Join(staticDir, "kerrigan-chart.js"))
 
 	r.Get("/chart", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(staticDir, "kerrigan-chart.js"))
@@ -176,27 +191,18 @@ func main() {
 
 	r.Get("/ws", wsHandler)
 
-	var interval time.Duration = 30
-	go util.WatchFile(sentryPredictionF, fc, interval)
-	go readSentryPrediction(sentryPredictionF, fc, msgQ)
-	go writer(msgQ)
+	go util.WatchFile(sentryPredictionF, checkerChannel, 3030)
 
-	go func() {
-		for {
-			pingMsg := WsResponse{}
-			pingMsg.M = "ping"
-			pingMsg.D.T = time.Now().Unix()
-			pingMsg.D.V = 1.111111
-			msgQ <- pingMsg
-			time.Sleep(4 * time.Minute)
-		}
-	}()
+	// go util.WatchFile(recordF, markerChannel, 3600)
+	go readSentryPrediction(sentryPredictionF, checkerChannel, msgQ)
+	go writer(msgQ)
+	go ping(msgQ)
 
 	s := &http.Server{
 		Addr:    ":8080",
 		Handler: r,
 	}
-	log.Println("Server v0.3 listens on port", s.Addr)
+	log.Println("Server v0.3.2 listens on port", s.Addr)
 	log.Fatal(s.ListenAndServe())
 }
 

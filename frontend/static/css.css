@@ -1,0 +1,68 @@
+body {
+  background-color: rgba(19, 23, 34, 0.8);
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  line-height: 1.6;
+  font-size: 16px;
+  padding: 0 10px;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  padding: 0;
+  margin: 0;
+}
+
+#legend {
+  color: rgba(255, 255, 255, 0.8);
+  width: 650px;
+  padding: 0px;
+  position: relative;
+  top: 685px;
+  left: 400px;
+  z-index: 2;
+  display: inline-block;
+}
+
+#date {
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0px;
+  position: relative;
+  top: 50px;
+  left: 600px;
+  z-index: 3;
+  display: inline-block;
+}
+
+#kchart {
+  padding: 0px;
+  margin: 10px 0px;
+}
+
+#live-stats {
+  margin: 20px 0px;
+  max-width: 1600px;
+  padding: 0 0 10px 0;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(19, 23, 34, 1);
+}
+
+table.stats {
+  margin: 0 10px;
+  max-width: 1600px;
+}
+
+table.stats,
+th.stats,
+td.stats {
+  border: solid 1px;
+  border-collapse: collapse;
+}
+
+td.stats {
+  width: 200px;
+  text-align: center;
+}

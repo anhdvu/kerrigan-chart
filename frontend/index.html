@@ -5,24 +5,73 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title id="title">
-        Kerrigan Chart v1
+        AESXII Chart
     </title>
+    <link rel="stylesheet" href="/static/css.css">
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 
 <body>
-    <div id="current-action" style="width: 1280px; border: solid 1px; text-align: center;">
-        <h2>
+    <div id="current-action" style="max-width: 1600px; text-align: center;">
+        <h3>
             Placeholder for current action.
-        </h2>
+        </h3>
     </div>
-    <div id="kchart" style="width: 1280px; padding: 0px; margin-top: 10px;">
-        <div id="legend"
-            style="width: 400px; padding: 0px; position: relative; top: 680px; left: 800px; z-index: 2; display: inline-block;">
-        </div>
+    <div id="kchart">
+        <div id="legend"></div>
+        <div id="date"></div>
     </div>
-    <div id=" trade"></div>
+    <div id="live-stats">
+        <!-- <h4>Timeframe - 1m</h4>
+        <table id="timeframe-1m" class="stats 1m">
+            <tr>
+                <th class="stats">Start Time</th>
+                <th class="stats">End Time</th>
+                <th class="stats">Price</th>
+                <th class="stats">Volume</th>
+                <th class="stats">Volume Ratio</th>
+                <th class="stats">Trade Number</th>
+            </tr>
+            <tr>
+                <td class="stats 1m">&nbsp</td>
+                <td class="stats 1m">&nbsp</td>
+                <td class="stats 1m">&nbsp</td>
+                <td class="stats 1m">&nbsp</td>
+                <td class="stats 1m">&nbsp</td>
+                <td class="stats 1m">&nbsp</td>
+            </tr>
+        </table> 
+        <br> -->
+        <h4>Timeframe - 5m</h4>
+        <table id="timeframe-5m" class="stats 5m">
+            <tr>
+                <th class="stats">Start Time</th>
+                <th class="stats">End Time</th>
+                <th class="stats">Price</th>
+                <th class="stats">Volume</th>
+                <th class="stats">Volume Ratio</th>
+                <th class="stats">Trade Number</th>
+            </tr>
+            <tr>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+            </tr>
+        </table>
+
+    </div>
     <script src="/static/kerrigan-chart.js"></script>
+    <script>
+        const dateContainer = document.getElementById("date");
+        const today = () => {
+            const today = new Date();
+            dateContainer.innerHTML = '<p style="font-size: 24px; margin: 0; padding: 0;">' + today.toUTCString().substr(0, 16) + '</p>';
+        }
+        today();
+    </script>
 </body>
 
 </html>
