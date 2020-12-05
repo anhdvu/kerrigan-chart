@@ -23,8 +23,7 @@ func WatchFile(path string, c chan bool, t int) error {
 			c <- true
 			tempStat = newStat
 		} else {
-			c <- false
+			time.Sleep(time.Duration(t) * time.Second)
 		}
-		time.Sleep(time.Duration(t) * time.Second)
 	}
 }

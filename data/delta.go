@@ -1,4 +1,4 @@
-package delta
+package data
 
 import (
 	"kerrigan-chart/util"
