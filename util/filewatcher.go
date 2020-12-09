@@ -7,7 +7,7 @@ import (
 )
 
 // WatchFile function used to watch for file change of a given file
-func WatchFile(path string, c chan bool, t int) error {
+func WatchFile(path string, c chan struct{}, t int) error {
 	initialStat, err := os.Stat(path)
 	if err != nil {
 		log.Panic(err)
@@ -20,8 +20,10 @@ func WatchFile(path string, c chan bool, t int) error {
 			return err
 		}
 		if newStat := stat.ModTime(); newStat != tempStat {
-			c <- true
 			tempStat = newStat
+			c <- struct{}{}
+			log.Println("the file update signal has been received.")
+			time.Sleep(time.Duration(t) * time.Second)
 		} else {
 			time.Sleep(time.Duration(t) * time.Second)
 		}

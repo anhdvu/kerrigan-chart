@@ -2,11 +2,13 @@ package data
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"kerrigan-chart/config"
 	"kerrigan-chart/util"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -25,7 +27,7 @@ type sentryJson struct {
 	Time  int64   `json:"time"`
 	Value float64 `json:"value"`
 }
-type SentryJsonSlice []sentryJson
+type SentryJsons []sentryJson
 
 type WsResponse struct {
 	M string `json:"m"`
@@ -35,7 +37,7 @@ type WsResponse struct {
 	} `json:"d"`
 }
 
-func GetSentryRecords() SentryJsonSlice {
+func GetSentryRecords() (SentryJsons, float64) {
 	raw, err := ioutil.ReadFile(config.HistorySentryFile)
 	if err != nil {
 		log.Panic(err)
@@ -52,10 +54,10 @@ func GetSentryRecords() SentryJsonSlice {
 		result[i].Time = util.ToEpoch(e.Time)
 		result[i].Value = e.Prediction
 	}
-	return result
+	return result, result[len(result)-1].Value
 }
 
-func (sjs *SentryJsonSlice) ToJSON(w io.Writer) {
+func (sjs *SentryJsons) ToJSON(w io.Writer) {
 	d := json.NewEncoder(w)
 	err := d.Encode(sjs)
 	if err != nil {
@@ -63,9 +65,9 @@ func (sjs *SentryJsonSlice) ToJSON(w io.Writer) {
 	}
 }
 
-func GetSentryPrediction() WsResponse {
+func GetSentryPrediction() (*WsResponse, error) {
 	data := make([]sentryPred, 0)
-	result := WsResponse{}
+	result := &WsResponse{}
 	raw, err := ioutil.ReadFile(config.SentryPredictionFile)
 	if err != nil {
 		log.Panic(err)
@@ -80,16 +82,26 @@ func GetSentryPrediction() WsResponse {
 		for _, e := range data {
 			if util.ToEpoch(e.Time) < now {
 				log.Println("there was a re-prediction.")
-			} else {
+			} else if util.ToEpoch(e.Time) > now {
 				result.M = "sentry"
 				result.D.T = util.ToEpoch(e.Time)
 				result.D.V = e.Prediction
 				break
+			} else {
+				return &WsResponse{}, fmt.Errorf("The file has no new data %v", WsResponse{})
 			}
 		}
 	} else {
 		log.Println("checker.txt is empty for now.")
 	}
+	return result, nil
+}
 
-	return result
+func UpdateSentryHistory(sh *SentryJsons, shc chan SentryJsons, mu *sync.Mutex) {
+	for {
+		mu.Lock()
+		*sh = <-shc
+		mu.Unlock()
+		log.Println((*sh)[len(*sh)-1])
+	}
 }

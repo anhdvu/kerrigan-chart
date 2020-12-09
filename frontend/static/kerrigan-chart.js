@@ -1,5 +1,6 @@
 const title = document.getElementById('title');
 const legend = document.getElementById('legend');
+const dyde = document.getElementById('dyde');
 function convertTime(t) {
     const now = new Date(t);
     return now.toUTCString().substr(17, 8);
@@ -23,7 +24,7 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     },
     timeScale: {
         timeVisible: true,
-        rightOffset: 16,
+        rightOffset: 24,
         fixLeftEdge: true,
         rightBarStaysOnScroll: false
     },
@@ -45,7 +46,7 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     watermark: {
         color: 'rgba(0, 150, 235, 1)',
         visible: true,
-        text: 'AESXII Chart v0.4.16',
+        text: 'AESXII Chart v0.4.20',
         fontSize: 24,
         horzAlign: 'left',
         vertAlign: 'bottom',
@@ -62,7 +63,7 @@ const volumeSeries = chart.addHistogramSeries({
         precision: 3,
     },
     scaleMargins: {
-        top: 0.6,
+        top: 0.75,
         bottom: 0,
     },
     lastValueVisible: false,
@@ -189,6 +190,18 @@ const klineConnect = () => {
     const klineSocket = new WebSocket(klineStreamURI);
     let volColor = '';
 
+    klineSocket.onopen = (event) => {
+        console.log('successfully connected to Kline socket!');
+    }
+
+    klineSocket.onclose = (event) => {
+        console.log('the Kline websocket connection closed for some reason.');
+        setTimeout(function () {
+            fetchKline();
+            klineConnect();
+        }, 1000);
+    }
+
     klineSocket.onmessage = (message) => {
         let data = JSON.parse(message.data);
         let rtCandlestickPrice = {
@@ -212,32 +225,33 @@ const klineConnect = () => {
         volumeSeries.update(rtVolumeData);
         title.textContent = 'AESXII Chart - ' + parseFloat(data.k.c).toFixed(2);
         tf5mtds[1].innerHTML = '<p>' + convertTime(data.k.t) + '</p>';
-        tf5mtds[2].innerHTML = '<p>' + convertTime(data.k.T) + '</p>';
-        tf5mtds[3].innerHTML = '<p>' + parseFloat(data.k.c).toFixed(2) + '</p>';
+        tf5mtds[2].innerHTML = '<p>' + parseFloat(data.k.c).toFixed(2) + '</p>';
         if (data.k.c < data.k.o) {
-            tf5mtds[3].style.backgroundColor = 'rgba(255,82,82, 0.8)';
+            tf5mtds[2].style.backgroundColor = 'rgba(255,82,82, 0.8)';
         } else {
-            tf5mtds[3].style.backgroundColor = 'rgba(0, 150, 136, 0.8)';
+            tf5mtds[2].style.backgroundColor = 'rgba(0, 150, 136, 0.8)';
         }
 
-        tf5mtds[4].innerHTML = '<p>' + parseFloat(data.k.v).toFixed(3) + "K" + '</p>';
-        tf5mtds[5].innerHTML = '<p>' + parseFloat(data.k.V / data.k.v).toFixed(4) + '</p>';
-        tf5mtds[6].innerHTML = '<p>' + data.k.n + '</p>';
+        tf5mtds[3].innerHTML = '<p>' + parseFloat(data.k.v).toFixed(3) + "BTC" + '</p>';
+        tf5mtds[4].innerHTML = '<p>' + parseFloat(data.k.V / data.k.v).toFixed(4) + '</p>';
+        tf5mtds[5].innerHTML = '<p>' + data.k.n + '</p>';
     };
 }
 
 // real time data for sentry series
 const sentryConnect = () => {
     const sentryURI = 'wss://mooner.dace.dev/ws';
+    // const sentryURI = 'ws://localhost:8080/ws';
     const sentrySocket = new WebSocket(sentryURI);
 
     sentrySocket.onopen = (event) => {
         console.log('successfully connected to Sentry socket!');
     }
+
     sentrySocket.onclose = (event) => {
         console.log('the websocket connection closed for some reason.');
         setTimeout(function () {
-            fetchKline();
+            fetchSentryHistory();
             sentryConnect();
         }, 1000);
     }
@@ -269,6 +283,8 @@ const sentryConnect = () => {
             sN600Series.update(rtN600SentryData);
             sP300Series.update(rtP300SentryData);
             sP600Series.update(rtP600SentryData);
+        } else if (data.m == 'dyde') {
+            dyde.textContent = data.d.v.toFixed(2);
         } else {
             console.log('ping');
         }
