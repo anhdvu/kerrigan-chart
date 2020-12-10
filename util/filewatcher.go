@@ -22,7 +22,6 @@ func WatchFile(path string, c chan struct{}, t int) error {
 		if newStat := stat.ModTime(); newStat != tempStat {
 			tempStat = newStat
 			c <- struct{}{}
-			log.Println("the file update signal has been received.")
 			time.Sleep(time.Duration(t) * time.Second)
 		} else {
 			time.Sleep(time.Duration(t) * time.Second)

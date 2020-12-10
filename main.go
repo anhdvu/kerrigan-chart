@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -36,24 +35,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	clients[ws] = true
 }
 
-// func getHistory(w http.ResponseWriter, r *http.Request) {
-// 	var records data.SentryJsons
-// 	records, _ = data.GetSentryRecords()
-// 	records.ToJSON(w)
-// }
-
-func Ping(mq chan<- *data.WsResponse) {
-	for {
-		pingMsg := &data.WsResponse{}
-		pingMsg.M = "ping"
-		pingMsg.D.T = time.Now().Unix()
-		pingMsg.D.V = 1.111111
-		mq <- pingMsg
-		time.Sleep(4 * time.Minute)
-	}
-}
-
-func writer(mq <-chan *data.WsResponse) {
+func writer(mq <-chan *data.WsMsg) {
 	for {
 		msg := <-mq
 		for client := range clients {
@@ -63,38 +45,41 @@ func writer(mq <-chan *data.WsResponse) {
 }
 
 func main() {
-	msgQ := make(chan *data.WsResponse, 10)
+	// Initialize a channel dedicated to websocket messages which will be sent to clients
+	msgQ := make(chan *data.WsMsg, 100)
+
+	// Initilize 2 channels to communicate file update signals
 	checkerChannel := make(chan struct{})
 	historicalSentryChannel := make(chan struct{})
-	sentryHistoryChannel := make(chan data.SentryJsons)
-	latestSentryChannel := make(chan float64)
-	sentryHistory, latestSentry := data.GetSentryRecords()
-	mu := &sync.Mutex{}
 
-	go data.UpdateSentryHistory(&sentryHistory, sentryHistoryChannel, mu)
+	// Initialize current sentry data upon server start
+	currentsentries := &data.Sentries{}
+	currentsentries.Update()
 
+	// Initialize future sentry data upon server start
+	// immediately send the upcoming sentry to message channel, which in turn will be sent to websocket clients
+	futuresentries := &data.SentryPredictions{}
+	futuresentries.Update()
+	msgQ <- futuresentries.GetClosestFutureSentry().ToWSMessage()
+
+	// Initialize a websocket client used to retrieve current BTC-USDT price
 	wsConn := data.NewKlineWebSocket()
-	go func(ls *float64, lsc chan float64, wsc *websocket.Conn) {
+	go func(wsc *websocket.Conn, s *data.Sentries) {
 		for {
-			select {
-			case *ls = <-lsc:
-				log.Printf("new prediction updated - %v", latestSentry)
-			default:
-			}
 			_, msg, err := wsc.ReadMessage()
 			if err != nil {
 				log.Println(err)
 			}
-
 			price := data.GetCurrentPrice(msg)
-			dyde := &data.WsResponse{}
+			dyde := &data.WsMsg{}
 			dyde.M = "dyde"
 			dyde.D.T = time.Now().Unix()
-			dyde.D.V = latestSentry - price
+			dyde.D.V = s.GetCurrentSentryValue() - price
 			msgQ <- dyde
 		}
-	}(&latestSentry, latestSentryChannel, wsConn)
+	}(wsConn, currentsentries)
 
+	// Initialize a new router
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -104,41 +89,32 @@ func main() {
 		Handler: r,
 	}
 
+	// Set up routes for the router
 	r.Get("/ws", wsHandler)
-	r.Get("/history", setJsonHeaders(makeSentryHistoryHandler(&sentryHistory)))
-	// r.Get("/history", setJsonHeaders(getHistory))
+	r.Get("/history", setJsonHeaders(makeHistoryHandler(currentsentries)))
+	go writer(msgQ)
 
 	go func() {
 		for {
 			select {
 			case <-checkerChannel:
-				log.Printf("%v has been updated!\n", config.SentryPredictionFile)
-				defer handlepanic()
-				msg, err := data.GetSentryPrediction()
-				if err != nil {
-					log.Println(err)
-				} else {
-					log.Printf("%+v\n", msg)
-					msgQ <- msg
-				}
+				log.Printf("Worker received a signal that %v has been updated!\n", config.SentryPredictionFile)
+				futuresentries.Update()
+				log.Printf("%+v\n", futuresentries.Get())
+				msgQ <- futuresentries.GetClosestFutureSentry().ToWSMessage()
 			case <-historicalSentryChannel:
-				log.Printf("%v has been updated!\n", config.HistorySentryFile)
-				sh, ls := data.GetSentryRecords()
-				sentryHistoryChannel <- sh
-				log.Println("New sentry history data sent through!")
-				latestSentryChannel <- ls
-				log.Println("New current sentry data sent through!")
+				log.Printf("Worker received a signal that %v has been updated!\n", config.HistorySentryFile)
+				currentsentries.Update()
+				log.Printf("%+v", currentsentries.GetCurrentSentryValue())
 			}
 		}
 	}()
 
 	go util.WatchFile(config.SentryPredictionFile, checkerChannel, 30)
-	go util.WatchFile(config.HistorySentryFile, historicalSentryChannel, 4)
+	go util.WatchFile(config.HistorySentryFile, historicalSentryChannel, 6)
 
-	go Ping(msgQ)
-	go writer(msgQ)
 	go func() {
-		log.Println("Server v0.4.5.2 listens on port", s.Addr)
+		log.Println("Server v0.5 listens on port", s.Addr)
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)
@@ -149,7 +125,6 @@ func main() {
 	signal.Notify(c, os.Interrupt)
 	signal.Notify(c, os.Kill)
 
-	// Block until a signal is received.
 	sig := <-c
 	log.Println("Got signal:", sig)
 
@@ -157,7 +132,6 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	cancel()
 	s.Shutdown(ctx)
-
 }
 
 func setJsonHeaders(fn http.HandlerFunc) http.HandlerFunc {
@@ -172,14 +146,8 @@ func setJsonHeaders(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func makeSentryHistoryHandler(records *data.SentryJsons) http.HandlerFunc {
+func makeHistoryHandler(s *data.Sentries) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		records.ToJSON(w)
-	}
-}
-
-func handlepanic() {
-	if a := recover(); a != nil {
-		log.Println("RECOVER", a)
+		s.ToJSON(w)
 	}
 }

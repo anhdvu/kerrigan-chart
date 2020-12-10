@@ -35,7 +35,7 @@ func NewKlineWebSocket() *websocket.Conn {
 	return c
 }
 
-func makeDelta(msg []byte) *Delta {
+func MakeDelta(msg []byte) *Delta {
 	re := regexp.MustCompile(`"[tTcvnV]":"?(\d+\.?\d+)`)
 	matches := re.FindAllSubmatch(msg, -1)
 	startTime, _ := strconv.ParseInt(string(matches[0][1]), 10, 64)
