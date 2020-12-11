@@ -45,6 +45,10 @@ func writer(mq <-chan *data.WsMsg) {
 }
 
 func main() {
+	// Create a log file to log server activities
+	logfile, _ := os.OpenFile("server.log", os.O_CREATE|os.O_APPEND, 644)
+	log.SetOutput(logfile)
+
 	// Initialize a channel dedicated to websocket messages which will be sent to clients
 	msgQ := make(chan *data.WsMsg, 100)
 
@@ -57,10 +61,8 @@ func main() {
 	currentsentries.Update()
 
 	// Initialize future sentry data upon server start
-	// immediately send the upcoming sentry to message channel, which in turn will be sent to websocket clients
 	futuresentries := &data.SentryPredictions{}
 	futuresentries.Update()
-	msgQ <- futuresentries.GetClosestFutureSentry().ToWSMessage()
 
 	// Initialize a websocket client used to retrieve current BTC-USDT price
 	wsConn := data.NewKlineWebSocket()
@@ -74,7 +76,7 @@ func main() {
 			dyde := &data.WsMsg{}
 			dyde.M = "dyde"
 			dyde.D.T = time.Now().Unix()
-			dyde.D.V = s.GetCurrentSentryValue() - price
+			dyde.D.V = s.GetCurrentSentry().Value - price
 			msgQ <- dyde
 		}
 	}(wsConn, currentsentries)
@@ -98,23 +100,21 @@ func main() {
 		for {
 			select {
 			case <-checkerChannel:
-				log.Printf("Worker received a signal that %v has been updated!\n", config.SentryPredictionFile)
 				futuresentries.Update()
-				log.Printf("%+v\n", futuresentries.Get())
+				log.Printf("New data from checker file: %+v\n", futuresentries.Get())
 				msgQ <- futuresentries.GetClosestFutureSentry().ToWSMessage()
 			case <-historicalSentryChannel:
-				log.Printf("Worker received a signal that %v has been updated!\n", config.HistorySentryFile)
 				currentsentries.Update()
-				log.Printf("%+v", currentsentries.GetCurrentSentryValue())
+				log.Printf("New current sentry value: %+v", currentsentries.GetCurrentSentry())
 			}
 		}
 	}()
 
-	go util.WatchFile(config.SentryPredictionFile, checkerChannel, 30)
+	go util.WatchFile(config.SentryPredictionFile, checkerChannel, 6)
 	go util.WatchFile(config.HistorySentryFile, historicalSentryChannel, 6)
 
 	go func() {
-		log.Println("Server v0.5 listens on port", s.Addr)
+		log.Println("Server v0.5.2 listens on port", s.Addr)
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)
@@ -149,5 +149,12 @@ func setJsonHeaders(fn http.HandlerFunc) http.HandlerFunc {
 func makeHistoryHandler(s *data.Sentries) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.ToJSON(w)
+	}
+}
+
+// Not used for now
+func handlepanic(fn func() error) {
+	if r := recover(); r != nil {
+		log.Println("RECOVER", r)
 	}
 }

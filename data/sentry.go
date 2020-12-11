@@ -2,6 +2,7 @@ package data
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"kerrigan-chart/config"
@@ -47,6 +48,7 @@ func (ss *Sentries) Get() []sentry {
 func (ss *Sentries) Update() {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
+
 	raw, err := ioutil.ReadFile(config.HistorySentryFile)
 	if err != nil {
 		log.Panicf("PANIC: Error reading file %v\nError detail: %v\n", config.HistorySentryFile, err)
@@ -55,7 +57,9 @@ func (ss *Sentries) Update() {
 	data := make([]sentryRecord, 0)
 	err = json.Unmarshal(raw, &data)
 	if err != nil {
-		log.Panicf("PANIC: Error during JSON sentry history unmarshaling\nError detail: %v\n", err)
+		log.Printf("ERROR: Error during JSON sentry history unmarshaling\nError detail: %v\n", err)
+		fmt.Println(string(raw))
+		return
 	}
 
 	ss.d = make([]sentry, len(data))
@@ -75,10 +79,10 @@ func (ss *Sentries) ToJSON(w io.Writer) {
 	}
 }
 
-func (ss *Sentries) GetCurrentSentryValue() float64 {
+func (ss *Sentries) GetCurrentSentry() sentry {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
-	return ss.d[len(ss.d)-1].Value
+	return ss.d[len(ss.d)-1]
 }
 
 type SentryPrediction struct {
@@ -109,9 +113,11 @@ func (sp *SentryPredictions) Update() {
 	if err != nil {
 		log.Panicf("PANIC: Error reading file %v\nError detail: %v\n", config.SentryPredictionFile, err)
 	}
+
 	err = json.Unmarshal(raw, &sp.d)
 	if err != nil {
-		log.Panicf("PANIC: Error during JSON sentry prediction unmarshaling\nError detail: %v\n", err)
+		log.Printf("ERROR: Error during JSON sentry prediction unmarshaling\nError detail: %v\n", err)
+		return
 	}
 }
 
@@ -139,11 +145,4 @@ func (sp *SentryPrediction) ToWSMessage() *WsMsg {
 	msg.D.T = util.ToEpoch(sp.Time)
 	msg.D.V = sp.Prediction
 	return msg
-}
-
-// Reserved for future uses
-func handlepanic(s string) {
-	if err := recover(); err != nil {
-		log.Println("RECOVER", err)
-	}
 }
