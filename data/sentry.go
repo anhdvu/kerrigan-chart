@@ -8,6 +8,7 @@ import (
 	"kerrigan-chart/config"
 	"kerrigan-chart/util"
 	"log"
+	"sort"
 	"sync"
 	"time"
 )
@@ -58,7 +59,7 @@ func (ss *Sentries) Update() {
 	err = json.Unmarshal(raw, &data)
 	if err != nil {
 		log.Printf("ERROR: Error during JSON sentry history unmarshaling\nError detail: %v\n", err)
-		fmt.Println(string(raw))
+		log.Println(string(raw))
 		return
 	}
 
@@ -83,6 +84,52 @@ func (ss *Sentries) GetCurrentSentry() sentry {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 	return ss.d[len(ss.d)-1]
+}
+
+func (ss *Sentries) GetTrend(h uint) {
+	var nCount, pCount, zCount int
+	var trend int
+	// var TrendMax, TrendMin int
+	// TrendMax = int(h)*6 - 1
+	// TrendMin = -1 * TrendMax
+
+	ss.mu.Lock()
+	s := ss.d[len(ss.d)-int(h)*6:]
+	ss.mu.Unlock()
+
+	for i := 0; i < len(s)-1; i++ {
+		if s[i+1].Value-s[i].Value > 6 {
+			trend++
+			pCount++
+		} else if s[i+1].Value-s[i].Value < -6 {
+			trend--
+			nCount++
+		} else {
+			trend = trend + 0
+			zCount++
+		}
+	}
+
+	countSlice := []int{nCount, pCount, zCount}
+	sort.Ints(countSlice)
+	max := countSlice[len(s)-1]
+	switch max {
+	case nCount:
+		fmt.Println("Count: bear")
+	case pCount:
+		fmt.Println("Count: bull")
+	case zCount:
+		fmt.Println("Count: sideway")
+	}
+
+	trendDiff := s[len(s)-1].Value - s[0].Value
+	if trendDiff > float64(h*36) {
+		fmt.Println("Trend difference: bull")
+	} else if trendDiff < float64(-1*int(h*36)) {
+		fmt.Println("Trend difference: bear")
+	} else {
+		fmt.Println("Trend difference: sideway")
+	}
 }
 
 type SentryPrediction struct {
@@ -121,20 +168,20 @@ func (sp *SentryPredictions) Update() {
 	}
 }
 
-func (sp *SentryPredictions) GetClosestFutureSentry() *SentryPrediction {
+func (sp *SentryPredictions) GetClosestFutureSentry() (*SentryPrediction, error) {
 	now := time.Now().Unix()
 	if len(sp.d) > 0 {
 		for _, e := range sp.d {
 			if util.ToEpoch(e.Time) < now {
 				log.Printf("There was a re-prediction at %v", e.Time)
 			} else if util.ToEpoch(e.Time) > now {
-				return &e
+				return &e, nil
 			}
 		}
 	} else {
 		log.Println("checker.txt is empty for now.")
 	}
-	return &SentryPrediction{}
+	return &SentryPrediction{}, fmt.Errorf("There is no valid prediction at the moment.")
 }
 
 // SentryPrediction data type has 1 method

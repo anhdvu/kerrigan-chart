@@ -46,7 +46,8 @@ func writer(mq <-chan *data.WsMsg) {
 
 func main() {
 	// Create a log file to log server activities
-	logfile, _ := os.OpenFile("server.log", os.O_CREATE|os.O_APPEND, 644)
+	logfile, _ := os.OpenFile("server.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	defer logfile.Close()
 	log.SetOutput(logfile)
 
 	// Initialize a channel dedicated to websocket messages which will be sent to clients
@@ -63,6 +64,24 @@ func main() {
 	// Initialize future sentry data upon server start
 	futuresentries := &data.SentryPredictions{}
 	futuresentries.Update()
+
+	// Initialize a new Chi router
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	// Set up routes for the router
+	r.Get("/ws", wsHandler)
+	r.Get("/history", setJsonHeaders(makeHistoryHandler(currentsentries)))
+	r.Get("/cp", setJsonHeaders(handler.GetCurrentParams))
+	r.Post("/cp", setJsonHeaders(handler.SetCurrentParams))
+	handler.FileServer(r)
+
+	// Initialize a custom HTTP server
+	s := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
+	}
 
 	// Initialize a websocket client used to retrieve current BTC-USDT price
 	wsConn := data.NewKlineWebSocket()
@@ -81,19 +100,6 @@ func main() {
 		}
 	}(wsConn, currentsentries)
 
-	// Initialize a new router
-	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	handler.FileServer(r)
-	s := &http.Server{
-		Addr:    ":8080",
-		Handler: r,
-	}
-
-	// Set up routes for the router
-	r.Get("/ws", wsHandler)
-	r.Get("/history", setJsonHeaders(makeHistoryHandler(currentsentries)))
 	go writer(msgQ)
 
 	go func() {
@@ -102,7 +108,11 @@ func main() {
 			case <-checkerChannel:
 				futuresentries.Update()
 				log.Printf("New data from checker file: %+v\n", futuresentries.Get())
-				msgQ <- futuresentries.GetClosestFutureSentry().ToWSMessage()
+				if sp, err := futuresentries.GetClosestFutureSentry(); err != nil {
+					log.Println(err)
+				} else {
+					msgQ <- sp.ToWSMessage()
+				}
 			case <-historicalSentryChannel:
 				currentsentries.Update()
 				log.Printf("New current sentry value: %+v", currentsentries.GetCurrentSentry())
@@ -114,7 +124,7 @@ func main() {
 	go util.WatchFile(config.HistorySentryFile, historicalSentryChannel, 6)
 
 	go func() {
-		log.Println("Server v0.5.2 listens on port", s.Addr)
+		log.Println("Server v0.5.3 listens on port", s.Addr)
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)

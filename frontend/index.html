@@ -12,13 +12,9 @@
 </head>
 
 <body>
-    <div id="current-action" style="max-width: 1600px; text-align: center;">
-        <h3 id="dyde">
-        </h3>
-    </div>
     <div id="kchart">
-        <div id="legend"></div>
         <div id="date"></div>
+        <div id="legend"></div>
     </div>
     <div id="live-stats">
         <!-- <h4>Timeframe - 1m</h4>
@@ -57,17 +53,50 @@
                 <td class="stats 5m">&nbsp</td>
                 <td class="stats 5m">&nbsp</td>
             </tr>
+            <tr>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+            </tr>
+            <tr>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+            </tr>
+            <tr>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+            </tr>
+            <tr>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+                <td class="stats 5m">&nbsp</td>
+            </tr>
         </table>
-
+        <div id="current-action">
+            <h3 id="dyde">
+            </h3>
+        </div>
     </div>
     <script src="/static/kerrigan-chart.js"></script>
     <script>
         const dateContainer = document.getElementById("date");
         const today = () => {
             const today = new Date();
-            dateContainer.innerHTML = '<p style="font-size: 24px; margin: 0; padding: 0;">' + today.toUTCString().substr(0, 16) + '</p>';
+            dateContainer.innerHTML = '<p style="font-size: 16px; margin: 0; padding: 0;">' + today.toUTCString().substr(0, 16) + '</p>';
         }
+        const dateUpdateInterval = 3600 * 1000;
         today();
+        setInterval(function () { today() }, dateUpdateInterval);
     </script>
 </body>
 

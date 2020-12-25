@@ -6,6 +6,9 @@ function convertTime(t) {
     return now.toUTCString().substr(17, 8);
 }
 
+const tableRecords = [];
+const table5m = document.getElementById('timeframe-5m');
+
 // Create base chart
 const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     width: 1600,
@@ -17,8 +20,8 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     },
     priceScale: {
         scaleMargins: {
-            top: 0.05,
-            bottom: 0.05
+            top: 0.1,
+            bottom: 0.1
         },
         entireTextOnly: true
     },
@@ -26,7 +29,7 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
         timeVisible: true,
         rightOffset: 24,
         fixLeftEdge: true,
-        rightBarStaysOnScroll: false
+        rightBarStaysOnScroll: true
     },
     grid: {
         horzLines: {
@@ -46,7 +49,7 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     watermark: {
         color: 'rgba(0, 150, 235, 1)',
         visible: true,
-        text: 'AESXII Chart v0.5.0',
+        text: 'AESXII Chart v0.5.5',
         fontSize: 24,
         horzAlign: 'left',
         vertAlign: 'bottom',
@@ -90,7 +93,7 @@ const subSentrySeriesConfig = {
     priceLineWidth: 1,
     priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
     priceLineSource: LightweightCharts.PriceLineSource.LastBar,
-    lastValueVisible: true,
+    lastValueVisible: false,
     color: 'rgba(0, 150, 235, 0.2)',
     lineWidth: 1,
     lineStyle: LightweightCharts.LineStyle.Solid,
@@ -150,6 +153,47 @@ const fetchKline = async () => {
     }
 }
 
+const fill5mRecordTable = async () => {
+    let response = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=5`);
+    if (!response.ok) {
+        console.log('Fetch failed!')
+    }
+    let data = await response.json();
+    tempRecordData = data.slice(0, 4).reverse();
+    let table5mRecords = []
+    for (let e of tempRecordData) {
+        table5mRecords.push({
+            startTime: convertTime(e[0]),
+            open: parseFloat(e[1]).toFixed(2),
+            price: parseFloat(e[4]).toFixed(2),
+            vol: parseFloat(e[5]).toFixed(3),
+            volRatio: parseFloat(e[9] / e[5]).toFixed(4),
+            tradeNumber: e[8]
+        })
+    }
+    for (let i = 2; i < table5m.rows.length; i++) {
+        table5m.rows[i].cells[0].textContent = table5mRecords[i - 2].startTime;
+        table5m.rows[i].cells[1].textContent = table5mRecords[i - 2].price;
+        if (table5mRecords[i - 2].price < table5mRecords[i - 2].open) {
+            table5m.rows[i].cells[1].style.backgroundColor = 'rgba(255,82,82, 0.8)';
+        } else {
+            table5m.rows[i].cells[1].style.backgroundColor = 'rgba(0, 150, 136, 0.8)';
+        }
+        table5m.rows[i].cells[2].textContent = table5mRecords[i - 2].vol;
+        if (table5mRecords[i - 2].vol > 399.0) {
+            table5m.rows[i].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.9)';
+        } else if (table5mRecords[i - 2].vol > 199.0) {
+            table5m.rows[i].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.6)';
+        } else if (table5mRecords[i - 2].vol > 99.0) {
+            table5m.rows[i].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.3)';
+        } else {
+            table5m.rows[i].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.1)';
+        }
+        table5m.rows[i].cells[3].textContent = table5mRecords[i - 2].volRatio;
+        table5m.rows[i].cells[4].textContent = table5mRecords[i - 2].tradeNumber;
+    }
+}
+
 const fetchSentryHistory = async () => {
     let response = await fetch('/history');
     if (!response.ok) {
@@ -194,8 +238,11 @@ const fetchSentryHistory = async () => {
     sN150Series.setData(sN150SentryData);
     sP150Series.setData(sP150SentryData);
 }
+
 fetchKline();
 fetchSentryHistory();
+fill5mRecordTable();
+setInterval(function () { fill5mRecordTable() }, 30 * 1000);
 
 // let markers = [];
 // markers.push({ time: 1606897800, position: 'aboveBar', color: '#e91e63', shape: 'arrowDown', size: 2, text: 'S @ 19303.39' });
@@ -221,11 +268,11 @@ const klineConnect = () => {
     }
 
     klineSocket.onclose = (event) => {
-        console.log('the Kline websocket connection closed for some reason.');
+        console.log('The Kline websocket connection closed for some reason.\nReconnecting in 5 seconds...');
         setTimeout(function () {
             fetchKline();
             klineConnect();
-        }, 1000);
+        }, 5000);
     }
 
     klineSocket.onmessage = (message) => {
@@ -284,11 +331,11 @@ const sentryConnect = () => {
     }
 
     sentrySocket.onclose = (event) => {
-        console.log('the websocket connection closed for some reason.');
+        console.log('The Sentry websocket connection closed for some reason.\nReconnecting in 5 seconds...');
         setTimeout(function () {
             fetchSentryHistory();
             sentryConnect();
-        }, 1000);
+        }, 5000);
     }
     sentrySocket.onmessage = (message) => {
         let data = JSON.parse(message.data);
