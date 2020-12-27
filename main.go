@@ -61,6 +61,11 @@ func main() {
 	currentsentries := &data.Sentries{}
 	currentsentries.Update()
 
+	currentsentries.GetTrend(3)
+	currentsentries.GetTrend(6)
+	currentsentries.GetTrend(12)
+	currentsentries.GetTrend(24)
+
 	// Initialize future sentry data upon server start
 	futuresentries := &data.SentryPredictions{}
 	futuresentries.Update()
@@ -73,8 +78,9 @@ func main() {
 	// Set up routes for the router
 	r.Get("/ws", wsHandler)
 	r.Get("/history", setJsonHeaders(makeHistoryHandler(currentsentries)))
-	r.Get("/cp", setJsonHeaders(handler.GetCurrentParams))
-	r.Post("/cp", setJsonHeaders(handler.SetCurrentParams))
+	r.Get("/sentry", setJsonHeaders(makeSentryHandler(futuresentries)))
+	// r.Get("/cp", setJsonHeaders(handler.GetCurrentParams))
+	// r.Post("/cp", setJsonHeaders(handler.SetCurrentParams))
 	handler.FileServer(r)
 
 	// Initialize a custom HTTP server
@@ -124,7 +130,7 @@ func main() {
 	go util.WatchFile(config.HistorySentryFile, historicalSentryChannel, 6)
 
 	go func() {
-		log.Println("Server v0.5.3 listens on port", s.Addr)
+		log.Println("Server v0.5.5 listens on port", s.Addr)
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)
@@ -156,9 +162,15 @@ func setJsonHeaders(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func makeHistoryHandler(s *data.Sentries) http.HandlerFunc {
+func makeHistoryHandler(ss *data.Sentries) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		s.ToJSON(w)
+		ss.ToJSON(w)
+	}
+}
+
+func makeSentryHandler(sp *data.SentryPredictions) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sp.ToJSON(w)
 	}
 }
 

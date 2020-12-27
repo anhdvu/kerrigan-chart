@@ -112,6 +112,12 @@ const sN150Series = chart.addLineSeries(subSentrySeriesConfig);
 let sN150SentryData = [];
 const sP150Series = chart.addLineSeries(subSentrySeriesConfig);
 let sP150SentryData = [];
+const sN900Series = chart.addLineSeries(sentrySeriesConfig);
+let sN900SentryData = [];
+const sP900Series = chart.addLineSeries(sentrySeriesConfig);
+let sP900SentryData = [];
+const sN1200Series = chart.addLineSeries(sentrySeriesConfig);
+let sN1200SentryData = [];
 
 const fetchKline = async () => {
     const timeoffset = 60 * 60 * 24 * 30 * 1000;
@@ -229,6 +235,18 @@ const fetchSentryHistory = async () => {
             time: e.time,
             value: e.value + 150
         });
+        sN900SentryData.push({
+            time: e.time,
+            value: e.value + 900
+        });
+        sP900SentryData.push({
+            time: e.time,
+            value: e.value - 900
+        });
+        sN1200SentryData.push({
+            time: e.time,
+            value: e.value + 1200
+        });
     };
     sentrySeries.setData(historySentryData);
     sN300Series.setData(sN300SentryData);
@@ -237,6 +255,9 @@ const fetchSentryHistory = async () => {
     sP600Series.setData(sP600SentryData);
     sN150Series.setData(sN150SentryData);
     sP150Series.setData(sP150SentryData);
+    sN900Series.setData(sN900SentryData);
+    sP900Series.setData(sP900SentryData);
+    sN1200Series.setData(sN1200SentryData);
 }
 
 fetchKline();
@@ -368,6 +389,18 @@ const sentryConnect = () => {
                 time: data.d.t,
                 value: data.d.v + 150
             };
+            let rtN900SentryData = {
+                time: data.d.t,
+                value: data.d.v + 900
+            };
+            let rtP900SentryData = {
+                time: data.d.t,
+                value: data.d.v - 900
+            };
+            let rtN1200SentryData = {
+                time: data.d.t,
+                value: data.d.v + 1200
+            };
             sentrySeries.update(rtSentryData);
             sN300Series.update(rtN300SentryData);
             sN600Series.update(rtN600SentryData);
@@ -375,6 +408,9 @@ const sentryConnect = () => {
             sP600Series.update(rtP600SentryData);
             sN150Series.update(rtN150SentryData);
             sP150Series.update(rtP150SentryData);
+            sN900Series.update(rtN900SentryData);
+            sP900Series.update(rtP900SentryData);
+            sN1200Series.update(rtN1200SentryData);
         } else if (data.m == 'dyde') {
             dyde.textContent = data.d.v.toFixed(2);
         } else {

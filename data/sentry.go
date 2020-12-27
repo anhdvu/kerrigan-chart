@@ -89,9 +89,9 @@ func (ss *Sentries) GetCurrentSentry() sentry {
 func (ss *Sentries) GetTrend(h uint) {
 	var nCount, pCount, zCount int
 	var trend int
-	// var TrendMax, TrendMin int
-	// TrendMax = int(h)*6 - 1
-	// TrendMin = -1 * TrendMax
+	var TrendMax, TrendMin int
+	TrendMax = int(h)*6 - 1
+	TrendMin = -1 * TrendMax
 
 	ss.mu.Lock()
 	s := ss.d[len(ss.d)-int(h)*6:]
@@ -109,10 +109,10 @@ func (ss *Sentries) GetTrend(h uint) {
 			zCount++
 		}
 	}
-
+	fmt.Printf("Trend %vh: %v (%v -> %v)\n", h, trend, TrendMin, TrendMax)
 	countSlice := []int{nCount, pCount, zCount}
 	sort.Ints(countSlice)
-	max := countSlice[len(s)-1]
+	max := countSlice[len(countSlice)-1]
 	switch max {
 	case nCount:
 		fmt.Println("Count: bear")
@@ -133,7 +133,7 @@ func (ss *Sentries) GetTrend(h uint) {
 }
 
 type SentryPrediction struct {
-	Time       string
+	Time       string  `json:"time"`
 	Prediction float64 `json:"predict"`
 }
 
@@ -165,6 +165,16 @@ func (sp *SentryPredictions) Update() {
 	if err != nil {
 		log.Printf("ERROR: Error during JSON sentry prediction unmarshaling\nError detail: %v\n", err)
 		return
+	}
+}
+
+func (sp *SentryPredictions) ToJSON(w io.Writer) {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	d := json.NewEncoder(w)
+	err := d.Encode(sp.d)
+	if err != nil {
+		log.Panic(err)
 	}
 }
 
