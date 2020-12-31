@@ -27,7 +27,7 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     },
     timeScale: {
         timeVisible: true,
-        rightOffset: 24,
+        rightOffset: 16,
         fixLeftEdge: true,
         rightBarStaysOnScroll: true
     },

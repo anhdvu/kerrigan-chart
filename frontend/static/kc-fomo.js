@@ -27,7 +27,7 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     },
     timeScale: {
         timeVisible: true,
-        rightOffset: 24,
+        rightOffset: 16,
         fixLeftEdge: true,
         rightBarStaysOnScroll: true
     },
@@ -76,7 +76,7 @@ let volumeData = [];
 
 // Sentry related series
 const sentrySeriesConfig = {
-    priceLineVisible: true,
+    priceLineVisible: false,
     priceLineColor: 'rgba(0, 150, 235, 1)',
     priceLineWidth: 1,
     priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
@@ -87,8 +87,20 @@ const sentrySeriesConfig = {
     lineStyle: LightweightCharts.LineStyle.Solid,
 }
 
-const subSentrySeriesConfig = {
+const mainSentrySeriesConfig = {
     priceLineVisible: true,
+    priceLineColor: 'rgba(125, 23, 166, 1)',
+    priceLineWidth: 1,
+    priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
+    priceLineSource: LightweightCharts.PriceLineSource.LastBar,
+    lastValueVisible: true,
+    color: 'rgba(125, 23, 166, 1)',
+    lineWidth: 2,
+    lineStyle: LightweightCharts.LineStyle.Solid,
+}
+
+const subSentrySeriesConfig = {
+    priceLineVisible: false,
     priceLineColor: 'rgba(0, 150, 235, 0.2)',
     priceLineWidth: 1,
     priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
@@ -98,7 +110,7 @@ const subSentrySeriesConfig = {
     lineWidth: 1,
     lineStyle: LightweightCharts.LineStyle.Solid,
 }
-const sentrySeries = chart.addLineSeries(sentrySeriesConfig);
+const sentrySeries = chart.addLineSeries(mainSentrySeriesConfig);
 let historySentryData = [];
 const sN300Series = chart.addLineSeries(sentrySeriesConfig);
 let sN300SentryData = [];
@@ -118,9 +130,11 @@ const sP900Series = chart.addLineSeries(sentrySeriesConfig);
 let sP900SentryData = [];
 const sN1200Series = chart.addLineSeries(sentrySeriesConfig);
 let sN1200SentryData = [];
+const sN1500Series = chart.addLineSeries(sentrySeriesConfig);
+let sN1500SentryData = [];
 
 const fetchKline = async () => {
-    const timeoffset = 60 * 60 * 24 * 30 * 1000;
+    const timeoffset = 60 * 60 * 24 * 60 * 1000;
     let startTime = Date.now() - timeoffset;
     const limit = 1000;
     const interval = '5m';
@@ -247,6 +261,10 @@ const fetchSentryHistory = async () => {
             time: e.time,
             value: e.value + 1200
         });
+        sN1500SentryData.push({
+            time: e.time,
+            value: e.value + 1500
+        });
     };
     sentrySeries.setData(historySentryData);
     sN300Series.setData(sN300SentryData);
@@ -258,6 +276,7 @@ const fetchSentryHistory = async () => {
     sN900Series.setData(sN900SentryData);
     sP900Series.setData(sP900SentryData);
     sN1200Series.setData(sN1200SentryData);
+    sN1500Series.setData(sN1500SentryData);
 }
 
 fetchKline();
@@ -401,6 +420,10 @@ const sentryConnect = () => {
                 time: data.d.t,
                 value: data.d.v + 1200
             };
+            let rtN1500SentryData = {
+                time: data.d.t,
+                value: data.d.v + 1500
+            };
             sentrySeries.update(rtSentryData);
             sN300Series.update(rtN300SentryData);
             sN600Series.update(rtN600SentryData);
@@ -411,6 +434,7 @@ const sentryConnect = () => {
             sN900Series.update(rtN900SentryData);
             sP900Series.update(rtP900SentryData);
             sN1200Series.update(rtN1200SentryData);
+            sN1500Series.update(rtN1500SentryData);
         } else if (data.m == 'dyde') {
             dyde.textContent = data.d.v.toFixed(2);
         } else {

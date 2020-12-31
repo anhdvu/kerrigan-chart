@@ -23,12 +23,14 @@ type WsMsg struct {
 type sentryRecord struct {
 	Time       string
 	Prediction float64 `json:"pred_price"`
-	Actual     float64 `json:"actual_price;omitempty"`
+	Actual     float64 `json:"actual_price"`
 }
 
 type sentry struct {
-	Time  int64   `json:"time"`
-	Value float64 `json:"value"`
+	Time   int64   `json:"time"`
+	Value  float64 `json:"value"`
+	Actual float64 `json:"actual"`
+	Delta  float64 `json:"delta"`
 }
 type Sentries struct {
 	mu sync.Mutex
@@ -67,6 +69,8 @@ func (ss *Sentries) Update() {
 	for i, e := range data {
 		ss.d[i].Time = util.ToEpoch(e.Time)
 		ss.d[i].Value = e.Prediction
+		ss.d[i].Actual = e.Actual
+		ss.d[i].Delta = e.Prediction - e.Actual
 	}
 }
 
@@ -92,16 +96,17 @@ func (ss *Sentries) GetTrend(h uint) {
 	var TrendMax, TrendMin int
 	TrendMax = int(h)*6 - 1
 	TrendMin = -1 * TrendMax
+	border := float64(h)
 
 	ss.mu.Lock()
 	s := ss.d[len(ss.d)-int(h)*6:]
 	ss.mu.Unlock()
 
 	for i := 0; i < len(s)-1; i++ {
-		if s[i+1].Value-s[i].Value > 6 {
+		if s[i+1].Value-s[i].Value > border {
 			trend++
 			pCount++
-		} else if s[i+1].Value-s[i].Value < -6 {
+		} else if s[i+1].Value-s[i].Value < -1*border {
 			trend--
 			nCount++
 		} else {
@@ -124,11 +129,11 @@ func (ss *Sentries) GetTrend(h uint) {
 
 	trendDiff := s[len(s)-1].Value - s[0].Value
 	if trendDiff > float64(h*36) {
-		fmt.Println("Trend difference: bull")
+		fmt.Printf("Trend difference: bull - %v\n", trendDiff)
 	} else if trendDiff < float64(-1*int(h*36)) {
-		fmt.Println("Trend difference: bear")
+		fmt.Printf("Trend difference: bear - %v\n", trendDiff)
 	} else {
-		fmt.Println("Trend difference: sideway")
+		fmt.Printf("Trend difference: sideway - %v\n", trendDiff)
 	}
 }
 
