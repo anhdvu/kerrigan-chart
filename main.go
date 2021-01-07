@@ -61,11 +61,6 @@ func main() {
 	currentsentries := &data.Sentries{}
 	currentsentries.Update()
 
-	currentsentries.GetTrend(3)
-	currentsentries.GetTrend(4)
-	currentsentries.GetTrend(6)
-	currentsentries.GetTrend(12)
-
 	// Initialize future sentry data upon server start
 	futuresentries := &data.SentryPredictions{}
 	futuresentries.Update()
@@ -79,7 +74,7 @@ func main() {
 	r.Get("/ws", wsHandler)
 	r.Get("/history", setJsonHeaders(handler.MakeHistoryHandler(currentsentries)))
 	r.Get("/sentry", setJsonHeaders(handler.MakePredictionHandler(futuresentries)))
-	handler.FileServer(r)
+	handler.FileServer(r, "/", config.FrontendDir)
 
 	// Initialize a custom HTTP server
 	s := &http.Server{
@@ -128,7 +123,7 @@ func main() {
 	go util.WatchFile(config.HistorySentryFile, historicalSentryChannel, 6)
 
 	go func() {
-		log.Println("Server v0.5.7 listens on port", s.Addr)
+		log.Println("Server v0.5.8 listens on port", s.Addr)
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)
