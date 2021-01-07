@@ -345,7 +345,7 @@ const klineConnect = () => {
             tf5mtds[2].style.backgroundColor = 'rgba(0, 150, 136, 0.8)';
         }
 
-        tf5mtds[3].innerHTML = '<p>' + parseFloat(data.k.v).toFixed(3) + " BTC" + '</p>';
+        tf5mtds[3].innerHTML = '<p>' + parseFloat(data.k.v).toFixed(3) + '</p>';
         if (data.k.v > 399.0) {
             tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.9)';
         } else if (data.k.v > 199.0) {
@@ -436,7 +436,7 @@ const sentryConnect = () => {
             sN1200Series.update(rtN1200SentryData);
             sN1500Series.update(rtN1500SentryData);
         } else if (data.m == 'dyde') {
-            dyde.textContent = data.d.v.toFixed(2);
+            dyde.textContent = data.d.v.toFixed(2) + " - SAFE BET " + data.d.e.toFixed(4) * 100 + "%";
         } else {
             console.log('ping');
         }

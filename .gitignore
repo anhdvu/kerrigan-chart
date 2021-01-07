@@ -2,3 +2,4 @@ kc
 *.txt
 test.html
 *.log
+bin/

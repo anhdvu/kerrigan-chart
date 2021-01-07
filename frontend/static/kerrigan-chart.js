@@ -49,7 +49,7 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     watermark: {
         color: 'rgba(0, 150, 235, 1)',
         visible: true,
-        text: 'AESXII Chart v0.5.5',
+        text: 'AESXII Chart v0.6.0',
         fontSize: 24,
         horzAlign: 'left',
         vertAlign: 'bottom',
@@ -87,6 +87,18 @@ const sentrySeriesConfig = {
     lineStyle: LightweightCharts.LineStyle.Solid,
 }
 
+const mainSentrySeriesConfig = {
+    priceLineVisible: true,
+    priceLineColor: 'rgba(125, 23, 166, 1)',
+    priceLineWidth: 1,
+    priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
+    priceLineSource: LightweightCharts.PriceLineSource.LastBar,
+    lastValueVisible: true,
+    color: 'rgba(125, 23, 166, 1)',
+    lineWidth: 2,
+    lineStyle: LightweightCharts.LineStyle.Solid,
+}
+
 const subSentrySeriesConfig = {
     priceLineVisible: true,
     priceLineColor: 'rgba(0, 150, 235, 0.2)',
@@ -98,23 +110,23 @@ const subSentrySeriesConfig = {
     lineWidth: 1,
     lineStyle: LightweightCharts.LineStyle.Solid,
 }
-const sentrySeries = chart.addLineSeries(sentrySeriesConfig);
+const sentry0Series = chart.addLineSeries(mainSentrySeriesConfig);
 let historySentryData = [];
-const sN300Series = chart.addLineSeries(sentrySeriesConfig);
-let sN300SentryData = [];
-const sN600Series = chart.addLineSeries(sentrySeriesConfig);
-let sN600SentryData = [];
-const sP300Series = chart.addLineSeries(sentrySeriesConfig);
-let sP300SentryData = [];
-const sP600Series = chart.addLineSeries(sentrySeriesConfig);
-let sP600SentryData = [];
-const sN150Series = chart.addLineSeries(subSentrySeriesConfig);
-let sN150SentryData = [];
-const sP150Series = chart.addLineSeries(subSentrySeriesConfig);
-let sP150SentryData = [];
+const sentryp4Series = chart.addLineSeries(sentrySeriesConfig);
+let sentryp4SentryData = [];
+const sentryp8Series = chart.addLineSeries(sentrySeriesConfig);
+let sentryp8SentryData = [];
+const sentryp12Series = chart.addLineSeries(mainSentrySeriesConfig);
+let sentryp12SentryData = [];
+const sentryn4Series = chart.addLineSeries(sentrySeriesConfig);
+let sentryn4SentryData = [];
+const sentryn8Series = chart.addLineSeries(sentrySeriesConfig);
+let sentryn8SentryData = [];
+const sentryn12Series = chart.addLineSeries(mainSentrySeriesConfig);
+let sentryn12SentryData = [];
 
 const fetchKline = async () => {
-    const timeoffset = 60 * 60 * 24 * 30 * 1000;
+    const timeoffset = 60 * 60 * 24 * 14 * 1000;
     let startTime = Date.now() - timeoffset;
     const limit = 1000;
     const interval = '5m';
@@ -191,6 +203,7 @@ const fill5mRecordTable = async () => {
         }
         table5m.rows[i].cells[3].textContent = table5mRecords[i - 2].volRatio;
         table5m.rows[i].cells[4].textContent = table5mRecords[i - 2].tradeNumber;
+        table5m.rows[i].cells[5].textContent = (table5mRecords[i - 2].price * table5mRecords[i - 2].vol / table5mRecords[i - 2].tradeNumber).toFixed(2);
     }
 }
 
@@ -205,49 +218,44 @@ const fetchSentryHistory = async () => {
             time: e.time,
             value: e.value,
         });
-        sN300SentryData.push({
-            time: e.time,
-            value: e.value + 300
-        });
-        sN600SentryData.push({
+        sentryp4SentryData.push({
             time: e.time,
             value: e.value + 600
-        })
-        sP300SentryData.push({
-            time: e.time,
-            value: e.value - 300
         });
-        sP600SentryData.push({
+        sentryp8SentryData.push({
+            time: e.time,
+            value: e.value + 1200
+        })
+        sentryp12SentryData.push({
+            time: e.time,
+            value: e.value + 1800
+        });
+        sentryn4SentryData.push({
             time: e.time,
             value: e.value - 600
         });
-        sP150SentryData.push({
+        sentryn8SentryData.push({
             time: e.time,
-            value: e.value - 150
+            value: e.value - 1200
         });
-        sN150SentryData.push({
+        sentryn12SentryData.push({
             time: e.time,
-            value: e.value + 150
+            value: e.value - 1800
         });
     };
-    sentrySeries.setData(historySentryData);
-    sN300Series.setData(sN300SentryData);
-    sN600Series.setData(sN600SentryData);
-    sP300Series.setData(sP300SentryData);
-    sP600Series.setData(sP600SentryData);
-    sN150Series.setData(sN150SentryData);
-    sP150Series.setData(sP150SentryData);
+    sentry0Series.setData(historySentryData);
+    sentryp4Series.setData(sentryp4SentryData);
+    sentryp8Series.setData(sentryp8SentryData);
+    sentryp12Series.setData(sentryp12SentryData);
+    sentryn4Series.setData(sentryn4SentryData);
+    sentryn8Series.setData(sentryn8SentryData);
+    sentryn12Series.setData(sentryn12SentryData);
 }
 
 fetchKline();
 fetchSentryHistory();
 fill5mRecordTable();
 setInterval(function () { fill5mRecordTable() }, 30 * 1000);
-
-// let markers = [];
-// markers.push({ time: 1606897800, position: 'aboveBar', color: '#e91e63', shape: 'arrowDown', size: 2, text: 'S @ 19303.39' });
-// markers.push({ time: 1606843200, position: 'belowBar', color: '#2196F3', shape: 'arrowUp', size: 2, text: 'B @ 18913.98' });
-// candleSeries.setMarkers(markers);
 
 // ################
 // Websocket
@@ -305,7 +313,7 @@ const klineConnect = () => {
             tf5mtds[2].style.backgroundColor = 'rgba(0, 150, 136, 0.8)';
         }
 
-        tf5mtds[3].innerHTML = '<p>' + parseFloat(data.k.v).toFixed(3) + " BTC" + '</p>';
+        tf5mtds[3].innerHTML = '<p>' + parseFloat(data.k.v).toFixed(3) + '</p>';
         if (data.k.v > 399.0) {
             tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.9)';
         } else if (data.k.v > 199.0) {
@@ -315,8 +323,9 @@ const klineConnect = () => {
         } else {
             tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.1)';
         }
-        tf5mtds[4].innerHTML = '<p>' + parseFloat(data.k.V / data.k.v).toFixed(4) + '</p>';
+        tf5mtds[4].innerHTML = '<p>' + (data.k.V / data.k.v).toFixed(4) + '</p>';
         tf5mtds[5].innerHTML = '<p>' + data.k.n + '</p>';
+        tf5mtds[6].innerHTML = '<p>' + (data.k.c * data.k.v / data.k.n).toFixed(2) + '</p>';
     };
 }
 
@@ -344,37 +353,38 @@ const sentryConnect = () => {
                 time: data.d.t,
                 value: data.d.v
             };
-            let rtN300SentryData = {
-                time: data.d.t,
-                value: data.d.v + 300
-            };
-            let rtN600SentryData = {
+            let rtp4SentryData = {
                 time: data.d.t,
                 value: data.d.v + 600
             };
-            let rtP300SentryData = {
+            let rtp8SentryData = {
                 time: data.d.t,
-                value: data.d.v - 300
+                value: data.d.v + 1200
             };
-            let rtP600SentryData = {
+            let rtp12SentryData = {
+                time: data.d.t,
+                value: data.d.v + 1800
+            };
+            let rtn4SentryData = {
                 time: data.d.t,
                 value: data.d.v - 600
             };
-            let rtP150SentryData = {
+            let rtn8SentryData = {
                 time: data.d.t,
-                value: data.d.v - 150
+                value: data.d.v - 1200
             };
-            let rtN150SentryData = {
+            let rtn12SentryData = {
                 time: data.d.t,
-                value: data.d.v + 150
+                value: data.d.v - 1800
             };
-            sentrySeries.update(rtSentryData);
-            sN300Series.update(rtN300SentryData);
-            sN600Series.update(rtN600SentryData);
-            sP300Series.update(rtP300SentryData);
-            sP600Series.update(rtP600SentryData);
-            sN150Series.update(rtN150SentryData);
-            sP150Series.update(rtP150SentryData);
+            sentry0Series.update(rtSentryData);
+            sentryp4Series.update(rtp4SentryData);
+            sentryp8Series.update(rtp8SentryData);
+            sentryp12Series.update(rtp12SentryData);
+            sentryn4Series.update(rtn4SentryData);
+            sentryn8Series.update(rtn8SentryData);
+            sentryn12Series.update(rtn12SentryData);
+
         } else if (data.m == 'dyde') {
             dyde.textContent = data.d.v.toFixed(2);
         } else {

@@ -89,7 +89,7 @@ func main() {
 
 	// Initialize a websocket client used to retrieve current BTC-USDT price
 	wsConn := data.NewKlineWebSocket()
-	go func(wsc *websocket.Conn, s *data.Sentries) {
+	go func(wsc *websocket.Conn, ss *data.Sentries) {
 		for {
 			_, msg, err := wsc.ReadMessage()
 			if err != nil {
@@ -99,7 +99,7 @@ func main() {
 			dyde := &data.WsMsg{}
 			dyde.M = "dyde"
 			dyde.D.T = time.Now().Unix()
-			dyde.D.V = s.GetCurrentSentry().Value - price
+			dyde.D.V, dyde.D.E = ss.GetCurrentSentry().CalculateDynamicDelta(price)
 			msgQ <- dyde
 		}
 	}(wsConn, currentsentries)
@@ -128,7 +128,7 @@ func main() {
 	go util.WatchFile(config.HistorySentryFile, historicalSentryChannel, 6)
 
 	go func() {
-		log.Println("Server v0.5.6 listens on port", s.Addr)
+		log.Println("Server v0.5.7 listens on port", s.Addr)
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)

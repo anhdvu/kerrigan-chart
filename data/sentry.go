@@ -18,6 +18,7 @@ type WsMsg struct {
 	D struct {
 		T int64   `json:"t"`
 		V float64 `json:"v"`
+		E float64 `json:"e"`
 	} `json:"d"`
 }
 type sentryRecord struct {
@@ -84,10 +85,10 @@ func (ss *Sentries) ToJSON(w io.Writer) {
 	}
 }
 
-func (ss *Sentries) GetCurrentSentry() sentry {
+func (ss *Sentries) GetCurrentSentry() *sentry {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
-	return ss.d[len(ss.d)-1]
+	return &ss.d[len(ss.d)-1]
 }
 
 func (ss *Sentries) GetTrend(h uint) {
@@ -135,6 +136,12 @@ func (ss *Sentries) GetTrend(h uint) {
 	} else {
 		fmt.Printf("Trend difference: sideway - %v\n", trendDiff)
 	}
+}
+
+func (s *sentry) CalculateDynamicDelta(price float64) (dyde float64, safe float64) {
+	dyde = s.Value - price
+	safe = (dyde + 900) / 1800
+	return dyde, safe
 }
 
 type SentryPrediction struct {
