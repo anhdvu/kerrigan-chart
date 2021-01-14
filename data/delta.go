@@ -59,8 +59,11 @@ func MakeDelta(msg []byte) *Delta {
 func GetCurrentPrice(msg []byte) float64 {
 	re := regexp.MustCompile(`"c":"?(\d+\.?\d+)`)
 	matches := re.FindAllSubmatch(msg, -1)
-	price, _ := strconv.ParseFloat(string(matches[0][1]), 64)
-	return price
+	if len(matches) > 0 {
+		price, _ := strconv.ParseFloat(string(matches[0][1]), 64)
+		return price
+	}
+	return 0
 }
 
 func (delta *Delta) ToJSON(w io.Writer) {

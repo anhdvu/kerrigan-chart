@@ -6,9 +6,6 @@ function convertTime(t) {
     return now.toUTCString().substr(17, 8);
 }
 
-const tableRecords = [];
-const table5m = document.getElementById('timeframe-5m');
-
 // Create base chart
 const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     width: 1600,
@@ -49,7 +46,7 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     watermark: {
         color: 'rgba(0, 150, 235, 1)',
         visible: true,
-        text: 'AESXII Chart v0.5.5',
+        text: 'AESXII Chart TEST v0.7.0',
         fontSize: 24,
         horzAlign: 'left',
         vertAlign: 'bottom',
@@ -57,6 +54,18 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
 });
 
 // Price series
+const candleSeriesConfig = {
+    upColor: '#57D918',
+    downColor: '#DB4300',
+    borderVisible: true,
+    wickVisible: true,
+    borderColor: '#0F188C',
+    wickColor: '#0F188C',
+    borderUpColor: '#57D918',
+    borderDownColor: '#DB4300',
+    wickUpColor: '#57D918',
+    wickDownColor: '#DB4300',
+}
 const candleSeries = chart.addCandlestickSeries();
 let chartData = [];
 const volumeSeries = chart.addHistogramSeries({
@@ -75,18 +84,6 @@ const volumeSeries = chart.addHistogramSeries({
 let volumeData = [];
 
 // Sentry related series
-const sentrySeriesConfig = {
-    priceLineVisible: false,
-    priceLineColor: 'rgba(0, 150, 235, 1)',
-    priceLineWidth: 1,
-    priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
-    priceLineSource: LightweightCharts.PriceLineSource.LastBar,
-    lastValueVisible: true,
-    color: 'rgba(0, 150, 235, 1)',
-    lineWidth: 2,
-    lineStyle: LightweightCharts.LineStyle.Solid,
-}
-
 const mainSentrySeriesConfig = {
     priceLineVisible: true,
     priceLineColor: 'rgba(125, 23, 166, 1)',
@@ -99,42 +96,53 @@ const mainSentrySeriesConfig = {
     lineStyle: LightweightCharts.LineStyle.Solid,
 }
 
-const subSentrySeriesConfig = {
+const lineSentryConfig = {
     priceLineVisible: false,
-    priceLineColor: 'rgba(0, 150, 235, 0.2)',
+    priceLineColor: 'rgba(0, 150, 235, 0.3)',
     priceLineWidth: 1,
     priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
     priceLineSource: LightweightCharts.PriceLineSource.LastBar,
     lastValueVisible: false,
-    color: 'rgba(0, 150, 235, 0.2)',
+    color: 'rgba(0, 150, 235, 0.3)',
     lineWidth: 1,
     lineStyle: LightweightCharts.LineStyle.Solid,
 }
-const sentrySeries = chart.addLineSeries(mainSentrySeriesConfig);
-let historySentryData = [];
-const sN300Series = chart.addLineSeries(sentrySeriesConfig);
-let sN300SentryData = [];
-const sN600Series = chart.addLineSeries(sentrySeriesConfig);
-let sN600SentryData = [];
-const sP300Series = chart.addLineSeries(sentrySeriesConfig);
-let sP300SentryData = [];
-const sP600Series = chart.addLineSeries(sentrySeriesConfig);
-let sP600SentryData = [];
-const sN150Series = chart.addLineSeries(subSentrySeriesConfig);
-let sN150SentryData = [];
-const sP150Series = chart.addLineSeries(subSentrySeriesConfig);
-let sP150SentryData = [];
-const sN900Series = chart.addLineSeries(sentrySeriesConfig);
-let sN900SentryData = [];
-const sP900Series = chart.addLineSeries(sentrySeriesConfig);
-let sP900SentryData = [];
-const sN1200Series = chart.addLineSeries(sentrySeriesConfig);
-let sN1200SentryData = [];
-const sN1500Series = chart.addLineSeries(sentrySeriesConfig);
-let sN1500SentryData = [];
 
+const zoneSentryConfig = {
+    priceLineVisible: false,
+    priceLineColor: 'rgba(99, 255, 0, 0.6)',
+    priceLineWidth: 1,
+    priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
+    priceLineSource: LightweightCharts.PriceLineSource.LastBar,
+    lastValueVisible: true,
+    color: 'rgba(99, 255, 0, 0.6)',
+    lineWidth: 2,
+    lineStyle: LightweightCharts.LineStyle.Solid,
+}
+
+const lineValue = 300;
+const sentryLines = [-6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6]
+const sentryLineSeries = []
+const sentryLineData = []
+// Initialize data for sentryLineSeries and sentryLineData
+const sentrySeries = chart.addLineSeries(mainSentrySeriesConfig);
+let sentryData = [];
+for (let i = 0; i < sentryLines.length; i++) {
+    if (sentryLines[i] % 2 === 0) {
+        const series = chart.addLineSeries(zoneSentryConfig);
+        sentryLineSeries.push(series);
+    } else {
+        const series = chart.addLineSeries(lineSentryConfig);
+        sentryLineSeries.push(series);
+    }
+    sentryLineData.push([]);
+}
+
+// ###########################
+// Fetch static data
+// ###########################
 const fetchKline = async () => {
-    const timeoffset = 60 * 60 * 24 * 60 * 1000;
+    const timeoffset = 60 * 60 * 24 * 30 * 1000;
     let startTime = Date.now() - timeoffset;
     const limit = 1000;
     const interval = '5m';
@@ -143,7 +151,10 @@ const fetchKline = async () => {
 
     while (true) {
         let response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&startTime=${startTime}&limit=${limit}`);
-        if (!response.ok) break;
+        if (!response.ok) {
+            console.log("Error while fetching kline =( !!!")
+            break;
+        }
         let data = await response.json();
         for (let e of data) {
             chartData.push({
@@ -173,47 +184,6 @@ const fetchKline = async () => {
     }
 }
 
-const fill5mRecordTable = async () => {
-    let response = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=5`);
-    if (!response.ok) {
-        console.log('Fetch failed!')
-    }
-    let data = await response.json();
-    tempRecordData = data.slice(0, 4).reverse();
-    let table5mRecords = []
-    for (let e of tempRecordData) {
-        table5mRecords.push({
-            startTime: convertTime(e[0]),
-            open: parseFloat(e[1]).toFixed(2),
-            price: parseFloat(e[4]).toFixed(2),
-            vol: parseFloat(e[5]).toFixed(3),
-            volRatio: parseFloat(e[9] / e[5]).toFixed(4),
-            tradeNumber: e[8]
-        })
-    }
-    for (let i = 2; i < table5m.rows.length; i++) {
-        table5m.rows[i].cells[0].textContent = table5mRecords[i - 2].startTime;
-        table5m.rows[i].cells[1].textContent = table5mRecords[i - 2].price;
-        if (table5mRecords[i - 2].price < table5mRecords[i - 2].open) {
-            table5m.rows[i].cells[1].style.backgroundColor = 'rgba(255,82,82, 0.8)';
-        } else {
-            table5m.rows[i].cells[1].style.backgroundColor = 'rgba(0, 150, 136, 0.8)';
-        }
-        table5m.rows[i].cells[2].textContent = table5mRecords[i - 2].vol;
-        if (table5mRecords[i - 2].vol > 399.0) {
-            table5m.rows[i].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.9)';
-        } else if (table5mRecords[i - 2].vol > 199.0) {
-            table5m.rows[i].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.6)';
-        } else if (table5mRecords[i - 2].vol > 99.0) {
-            table5m.rows[i].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.3)';
-        } else {
-            table5m.rows[i].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.1)';
-        }
-        table5m.rows[i].cells[3].textContent = table5mRecords[i - 2].volRatio;
-        table5m.rows[i].cells[4].textContent = table5mRecords[i - 2].tradeNumber;
-    }
-}
-
 const fetchSentryHistory = async () => {
     let response = await fetch('/history');
     if (!response.ok) {
@@ -221,79 +191,42 @@ const fetchSentryHistory = async () => {
     }
     let data = await response.json();
     for (let e of data) {
-        historySentryData.push({
+        sentryData.push({
             time: e.time,
             value: e.value,
         });
-        sN300SentryData.push({
-            time: e.time,
-            value: e.value + 300
-        });
-        sN600SentryData.push({
-            time: e.time,
-            value: e.value + 600
-        })
-        sP300SentryData.push({
-            time: e.time,
-            value: e.value - 300
-        });
-        sP600SentryData.push({
-            time: e.time,
-            value: e.value - 600
-        });
-        sP150SentryData.push({
-            time: e.time,
-            value: e.value - 150
-        });
-        sN150SentryData.push({
-            time: e.time,
-            value: e.value + 150
-        });
-        sN900SentryData.push({
-            time: e.time,
-            value: e.value + 900
-        });
-        sP900SentryData.push({
-            time: e.time,
-            value: e.value - 900
-        });
-        sN1200SentryData.push({
-            time: e.time,
-            value: e.value + 1200
-        });
-        sN1500SentryData.push({
-            time: e.time,
-            value: e.value + 1500
-        });
+
+        // for (let elem of sentryLines) {
+        //     sentryLineData[sentryLines.indexOf(elem)].push({
+        //         time: e.time,
+        //         value: e.value + lineValue * elem
+        //     });
+        // };
+
+        for (let i = 0; i < sentryLineData.length; i++) {
+            sentryLineData[i].push({
+                time: e.time,
+                value: e.value + lineValue * sentryLines[i]
+            })
+        }
     };
-    sentrySeries.setData(historySentryData);
-    sN300Series.setData(sN300SentryData);
-    sN600Series.setData(sN600SentryData);
-    sP300Series.setData(sP300SentryData);
-    sP600Series.setData(sP600SentryData);
-    sN150Series.setData(sN150SentryData);
-    sP150Series.setData(sP150SentryData);
-    sN900Series.setData(sN900SentryData);
-    sP900Series.setData(sP900SentryData);
-    sN1200Series.setData(sN1200SentryData);
-    sN1500Series.setData(sN1500SentryData);
+    sentrySeries.setData(sentryData);
+    for (let i = 0; i < sentryLineSeries.length; i++) {
+        sentryLineSeries[i].setData(sentryLineData[i])
+    }
 }
 
 fetchKline();
 fetchSentryHistory();
-fill5mRecordTable();
-setInterval(function () { fill5mRecordTable() }, 30 * 1000);
 
 // let markers = [];
 // markers.push({ time: 1606897800, position: 'aboveBar', color: '#e91e63', shape: 'arrowDown', size: 2, text: 'S @ 19303.39' });
 // markers.push({ time: 1606843200, position: 'belowBar', color: '#2196F3', shape: 'arrowUp', size: 2, text: 'B @ 18913.98' });
 // candleSeries.setMarkers(markers);
 
-// ################
-// Websocket
-// ################
-const tf1mtds = document.getElementsByClassName('stats 1m');
-const tf5mtds = document.getElementsByClassName('stats 5m');
+// ###########################
+// Websocket to get live data
+// ###########################
 const klineConnect = () => {
     const baseURL = 'wss://stream.binance.com:9443';
     const kline5mStreamName = 'btcusdt@kline_5m';
@@ -337,33 +270,12 @@ const klineConnect = () => {
         candleSeries.update(rtCandlestickPrice);
         volumeSeries.update(rtVolumeData);
         title.textContent = 'AESXII Chart - ' + parseFloat(data.k.c).toFixed(2);
-        tf5mtds[1].innerHTML = '<p>' + convertTime(data.k.t) + '</p>';
-        tf5mtds[2].innerHTML = '<p>' + parseFloat(data.k.c).toFixed(2) + '</p>';
-        if (data.k.c < data.k.o) {
-            tf5mtds[2].style.backgroundColor = 'rgba(255,82,82, 0.8)';
-        } else {
-            tf5mtds[2].style.backgroundColor = 'rgba(0, 150, 136, 0.8)';
-        }
-
-        tf5mtds[3].innerHTML = '<p>' + parseFloat(data.k.v).toFixed(3) + '</p>';
-        if (data.k.v > 399.0) {
-            tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.9)';
-        } else if (data.k.v > 199.0) {
-            tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.6)';
-        } else if (data.k.v > 99.0) {
-            tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.3)';
-        } else {
-            tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.1)';
-        }
-        tf5mtds[4].innerHTML = '<p>' + parseFloat(data.k.V / data.k.v).toFixed(4) + '</p>';
-        tf5mtds[5].innerHTML = '<p>' + data.k.n + '</p>';
     };
 }
 
 // real time data for sentry series
 const sentryConnect = () => {
     const sentryURI = 'wss://mooner.dace.dev/ws';
-    // const sentryURI = 'ws://localhost:8080/ws';
     const sentrySocket = new WebSocket(sentryURI);
 
     sentrySocket.onopen = (event) => {
@@ -380,61 +292,24 @@ const sentryConnect = () => {
     sentrySocket.onmessage = (message) => {
         let data = JSON.parse(message.data);
         if (data.m == 'sentry') {
-            let rtSentryData = {
+            sentrySeries.update({
                 time: data.d.t,
                 value: data.d.v
-            };
-            let rtN300SentryData = {
-                time: data.d.t,
-                value: data.d.v + 300
-            };
-            let rtN600SentryData = {
-                time: data.d.t,
-                value: data.d.v + 600
-            };
-            let rtP300SentryData = {
-                time: data.d.t,
-                value: data.d.v - 300
-            };
-            let rtP600SentryData = {
-                time: data.d.t,
-                value: data.d.v - 600
-            };
-            let rtP150SentryData = {
-                time: data.d.t,
-                value: data.d.v - 150
-            };
-            let rtN150SentryData = {
-                time: data.d.t,
-                value: data.d.v + 150
-            };
-            let rtN900SentryData = {
-                time: data.d.t,
-                value: data.d.v + 900
-            };
-            let rtP900SentryData = {
-                time: data.d.t,
-                value: data.d.v - 900
-            };
-            let rtN1200SentryData = {
-                time: data.d.t,
-                value: data.d.v + 1200
-            };
-            let rtN1500SentryData = {
-                time: data.d.t,
-                value: data.d.v + 1500
-            };
-            sentrySeries.update(rtSentryData);
-            sN300Series.update(rtN300SentryData);
-            sN600Series.update(rtN600SentryData);
-            sP300Series.update(rtP300SentryData);
-            sP600Series.update(rtP600SentryData);
-            sN150Series.update(rtN150SentryData);
-            sP150Series.update(rtP150SentryData);
-            sN900Series.update(rtN900SentryData);
-            sP900Series.update(rtP900SentryData);
-            sN1200Series.update(rtN1200SentryData);
-            sN1500Series.update(rtN1500SentryData);
+            });
+            for (let line of sentryLineSeries) {
+                line.update({
+                    time: data.d.t,
+                    value: data.d.v + sentryLines[sentryLineSeries.indexOf(line)] * lineValue
+                });
+
+                if (sentryLines[sentryLineSeries.indexOf(line)] % 2 === 0 && sentryLines[sentryLineSeries.indexOf(line)] < 0) {
+                    line.setMarkers([{ time: data.d.t, position: 'inBar', color: '#2196f3', shape: 'arrowUp', size: 0, text: sentryLines[sentryLineSeries.indexOf(line)] / 2 }])
+                } else if (sentryLines[sentryLineSeries.indexOf(line)] % 2 === 0 && sentryLines[sentryLineSeries.indexOf(line)] > 0) {
+                    line.setMarkers([{ time: data.d.t, position: 'inBar', color: '#e91e63', shape: 'arrowDown', size: 0, text: sentryLines[sentryLineSeries.indexOf(line)] / 2 }])
+                } else {
+                    continue
+                }
+            }
         } else if (data.m == 'dyde') {
             dyde.textContent = data.d.v.toFixed(2) + " - SAFE BET " + data.d.e.toFixed(4) * 100 + "%";
         } else {

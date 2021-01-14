@@ -16,7 +16,7 @@ deployfe:
 	scp -P 1006 -r frontend/ trym@dace.dev:/home/trym/devev/to_the_moon/kerrigan/kerrigan-chart/
 deploybe:
 	@echo "Deploying server files to production server..."
-	scp -P 1006 kc trym@dace.dev:/home/trym/devev/to_the_moon/kerrigan/kerrigan-chart/
+	scp -P 1006 bin/kc trym@dace.dev:/home/trym/devev/to_the_moon/kerrigan/kerrigan-chart/
 deployall:
 	@echo "Deploying all to production server..."
 	scp -P 1006 -r bin/kc frontend/ trym@dace.dev:/home/trym/devev/to_the_moon/kerrigan/kerrigan-chart/

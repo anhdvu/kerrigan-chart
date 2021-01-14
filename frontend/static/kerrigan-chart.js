@@ -49,7 +49,7 @@ const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
     watermark: {
         color: 'rgba(0, 150, 235, 1)',
         visible: true,
-        text: 'AESXII Chart v0.6.0',
+        text: 'AESXII Chart v0.7.0',
         fontSize: 24,
         horzAlign: 'left',
         vertAlign: 'bottom',

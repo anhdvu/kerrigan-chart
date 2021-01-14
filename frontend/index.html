@@ -9,12 +9,15 @@
     </title>
     <link rel="stylesheet" href="/static/css.css">
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 
 <body>
     <div id="kchart">
         <div id="date"></div>
         <div id="legend"></div>
+    </div>
+    <div id="kchart-wall">
     </div>
     <div id="live-stats">
         <!-- <h4>Timeframe - 1m</h4>
@@ -94,6 +97,7 @@
         </div>
     </div>
     <script src="/static/kerrigan-chart.js"></script>
+    <script src="/static/kerrigan-chart-wall.js"></script>
     <script>
         const dateContainer = document.getElementById("date");
         const today = () => {
