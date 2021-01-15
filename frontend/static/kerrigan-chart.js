@@ -75,18 +75,6 @@ const volumeSeries = chart.addHistogramSeries({
 let volumeData = [];
 
 // Sentry related series
-const sentrySeriesConfig = {
-    priceLineVisible: true,
-    priceLineColor: 'rgba(0, 150, 235, 1)',
-    priceLineWidth: 1,
-    priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
-    priceLineSource: LightweightCharts.PriceLineSource.LastBar,
-    lastValueVisible: true,
-    color: 'rgba(0, 150, 235, 1)',
-    lineWidth: 2,
-    lineStyle: LightweightCharts.LineStyle.Solid,
-}
-
 const mainSentrySeriesConfig = {
     priceLineVisible: true,
     priceLineColor: 'rgba(125, 23, 166, 1)',
@@ -99,32 +87,50 @@ const mainSentrySeriesConfig = {
     lineStyle: LightweightCharts.LineStyle.Solid,
 }
 
-const subSentrySeriesConfig = {
-    priceLineVisible: true,
-    priceLineColor: 'rgba(0, 150, 235, 0.2)',
+const lineSentrySeriesConfig = {
+    priceLineVisible: false,
+    priceLineColor: 'rgba(0, 150, 235, 1)',
     priceLineWidth: 1,
     priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
     priceLineSource: LightweightCharts.PriceLineSource.LastBar,
-    lastValueVisible: false,
-    color: 'rgba(0, 150, 235, 0.2)',
-    lineWidth: 1,
+    lastValueVisible: true,
+    color: 'rgba(0, 150, 235, 1)',
+    lineWidth: 2,
     lineStyle: LightweightCharts.LineStyle.Solid,
 }
-const sentry0Series = chart.addLineSeries(mainSentrySeriesConfig);
-let historySentryData = [];
-const sentryp4Series = chart.addLineSeries(sentrySeriesConfig);
-let sentryp4SentryData = [];
-const sentryp8Series = chart.addLineSeries(sentrySeriesConfig);
-let sentryp8SentryData = [];
-const sentryp12Series = chart.addLineSeries(mainSentrySeriesConfig);
-let sentryp12SentryData = [];
-const sentryn4Series = chart.addLineSeries(sentrySeriesConfig);
-let sentryn4SentryData = [];
-const sentryn8Series = chart.addLineSeries(sentrySeriesConfig);
-let sentryn8SentryData = [];
-const sentryn12Series = chart.addLineSeries(mainSentrySeriesConfig);
-let sentryn12SentryData = [];
 
+const zoneSentrySeriesConfig = {
+    priceLineVisible: true,
+    priceLineColor: 'rgba(125, 23, 166, 1)',
+    priceLineWidth: 1,
+    priceLineStyle: LightweightCharts.LineStyle.SparseDotted,
+    priceLineSource: LightweightCharts.PriceLineSource.LastBar,
+    lastValueVisible: true,
+    color: 'rgba(125, 23, 166, 1)',
+    lineWidth: 2,
+    lineStyle: LightweightCharts.LineStyle.Solid,
+}
+const lineValue = 600;
+const sentryLines = [-3, -2, -1, 1, 2, 3]
+const sentryLineSeries = []
+const sentryLineData = []
+// Initialize data for sentryLineSeries and sentryLineData
+const sentrySeries = chart.addLineSeries(mainSentrySeriesConfig);
+let sentryData = [];
+for (let i = 0; i < sentryLines.length; i++) {
+    if (sentryLines[i] % 3 === 0) {
+        const series = chart.addLineSeries(zoneSentrySeriesConfig);
+        sentryLineSeries.push(series);
+    } else {
+        const series = chart.addLineSeries(lineSentrySeriesConfig);
+        sentryLineSeries.push(series);
+    }
+    sentryLineData.push([]);
+}
+
+// ###########################
+// Fetch static data
+// ###########################
 const fetchKline = async () => {
     const timeoffset = 60 * 60 * 24 * 14 * 1000;
     let startTime = Date.now() - timeoffset;
@@ -214,42 +220,21 @@ const fetchSentryHistory = async () => {
     }
     let data = await response.json();
     for (let e of data) {
-        historySentryData.push({
+        sentryData.push({
             time: e.time,
             value: e.value,
         });
-        sentryp4SentryData.push({
-            time: e.time,
-            value: e.value + 600
-        });
-        sentryp8SentryData.push({
-            time: e.time,
-            value: e.value + 1200
-        })
-        sentryp12SentryData.push({
-            time: e.time,
-            value: e.value + 1800
-        });
-        sentryn4SentryData.push({
-            time: e.time,
-            value: e.value - 600
-        });
-        sentryn8SentryData.push({
-            time: e.time,
-            value: e.value - 1200
-        });
-        sentryn12SentryData.push({
-            time: e.time,
-            value: e.value - 1800
-        });
+        for (let i = 0; i < sentryLineData.length; i++) {
+            sentryLineData[i].push({
+                time: e.time,
+                value: e.value + lineValue * sentryLines[i]
+            })
+        }
     };
-    sentry0Series.setData(historySentryData);
-    sentryp4Series.setData(sentryp4SentryData);
-    sentryp8Series.setData(sentryp8SentryData);
-    sentryp12Series.setData(sentryp12SentryData);
-    sentryn4Series.setData(sentryn4SentryData);
-    sentryn8Series.setData(sentryn8SentryData);
-    sentryn12Series.setData(sentryn12SentryData);
+    sentrySeries.setData(sentryData);
+    for (let i = 0; i < sentryLineSeries.length; i++) {
+        sentryLineSeries[i].setData(sentryLineData[i])
+    }
 }
 
 fetchKline();
@@ -257,10 +242,9 @@ fetchSentryHistory();
 fill5mRecordTable();
 setInterval(function () { fill5mRecordTable() }, 30 * 1000);
 
-// ################
-// Websocket
-// ################
-const tf1mtds = document.getElementsByClassName('stats 1m');
+// ###########################
+// Websocket to get live data
+// ###########################
 const tf5mtds = document.getElementsByClassName('stats 5m');
 const klineConnect = () => {
     const baseURL = 'wss://stream.binance.com:9443';
@@ -349,44 +333,21 @@ const sentryConnect = () => {
     sentrySocket.onmessage = (message) => {
         let data = JSON.parse(message.data);
         if (data.m == 'sentry') {
-            let rtSentryData = {
+            sentrySeries.update({
                 time: data.d.t,
                 value: data.d.v
-            };
-            let rtp4SentryData = {
-                time: data.d.t,
-                value: data.d.v + 600
-            };
-            let rtp8SentryData = {
-                time: data.d.t,
-                value: data.d.v + 1200
-            };
-            let rtp12SentryData = {
-                time: data.d.t,
-                value: data.d.v + 1800
-            };
-            let rtn4SentryData = {
-                time: data.d.t,
-                value: data.d.v - 600
-            };
-            let rtn8SentryData = {
-                time: data.d.t,
-                value: data.d.v - 1200
-            };
-            let rtn12SentryData = {
-                time: data.d.t,
-                value: data.d.v - 1800
-            };
-            sentry0Series.update(rtSentryData);
-            sentryp4Series.update(rtp4SentryData);
-            sentryp8Series.update(rtp8SentryData);
-            sentryp12Series.update(rtp12SentryData);
-            sentryn4Series.update(rtn4SentryData);
-            sentryn8Series.update(rtn8SentryData);
-            sentryn12Series.update(rtn12SentryData);
+            });
+            sentrySeries.setMarkers([{ time: data.d.t, position: 'aboveBar', color: 'rgba(255, 255, 255, 0.8)', shape: 'arrowUp', size: 0, text: '                     0' }]);
+            for (let line of sentryLineSeries) {
+                line.update({
+                    time: data.d.t,
+                    value: data.d.v + sentryLines[sentryLineSeries.indexOf(line)] * lineValue
+                });
 
+                line.setMarkers([{ time: data.d.t, position: 'aboveBar', color: 'rgba(255, 255, 255, 0.8)', shape: 'arrowUp', size: 0, text: '                     ' + sentryLines[sentryLineSeries.indexOf(line)] }])
+            }
         } else if (data.m == 'dyde') {
-            dyde.textContent = data.d.v.toFixed(2);
+            dyde.textContent = (-1 * data.d.v).toFixed(2);
         } else {
             console.log('ping');
         }
@@ -418,7 +379,6 @@ chart.subscribeCrosshairMove(function (param) {
             legend.innerHTML = `<p>O ${OHLC.open} - H ${OHLC.high} - L ${OHLC.low} - C ${OHLC.close} - Vol ${volume}</p>`;
         }
         catch (err) {
-            console.log('No data at given time yet.')
         }
     }
 });

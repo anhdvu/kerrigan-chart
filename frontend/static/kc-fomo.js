@@ -303,9 +303,9 @@ const sentryConnect = () => {
                 });
 
                 if (sentryLines[sentryLineSeries.indexOf(line)] % 2 === 0 && sentryLines[sentryLineSeries.indexOf(line)] < 0) {
-                    line.setMarkers([{ time: data.d.t, position: 'inBar', color: '#2196f3', shape: 'arrowUp', size: 0, text: sentryLines[sentryLineSeries.indexOf(line)] / 2 }])
+                    line.setMarkers([{ time: data.d.t, position: 'inBar', color: 'rgba(255, 255, 255, 0.8)', shape: 'arrowUp', size: 0, text: sentryLines[sentryLineSeries.indexOf(line)] / 2 }])
                 } else if (sentryLines[sentryLineSeries.indexOf(line)] % 2 === 0 && sentryLines[sentryLineSeries.indexOf(line)] > 0) {
-                    line.setMarkers([{ time: data.d.t, position: 'inBar', color: '#e91e63', shape: 'arrowDown', size: 0, text: sentryLines[sentryLineSeries.indexOf(line)] / 2 }])
+                    line.setMarkers([{ time: data.d.t, position: 'inBar', color: 'rgba(255, 255, 255, 0.8)', shape: 'arrowDown', size: 0, text: sentryLines[sentryLineSeries.indexOf(line)] / 2 }])
                 } else {
                     continue
                 }

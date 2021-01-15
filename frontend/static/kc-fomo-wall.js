@@ -16,6 +16,17 @@ const generateBarColors = (current) => {
     result[current] = 'rgb(77, 148, 255)';
     return result
 }
+const generateTickText = (values) => {
+    const result = []
+    for (let value of values) {
+        if (value % 600 === 0) {
+            result.push('' + (value / 600 * -1))
+        } else {
+            result.push('')
+        }
+    }
+    return result
+}
 
 const fetchBook = async () => {
     let response = await fetch('/book');
@@ -24,7 +35,6 @@ const fetchBook = async () => {
     }
     let data = await response.json();
     const chartdata = JSON.parse(data)["chart_data"];
-    console.log(chartdata);
     let trace = [{
         x: chartdata.bar,
         y: chartdata.value,
@@ -41,17 +51,30 @@ const fetchBook = async () => {
             size: 16,
             color: 'rgba(255, 255, 255, 0.8)'
         },
-        title: 'Walls',
+        title: '',
         xaxis: {
-            title: 'Delta',
+            title: 'Lines',
             tickmode: 'array',
             tickvals: [0, 10, 20, 30, 40],
-            ticktext: chartdata.xticks,
-            ticklabelposition: "outside left"
+            ticktext: generateTickText(chartdata.xticks),
+            ticklabelposition: "outside"
         },
         yaxis: {
             title: 'BTC'
         },
+        annotations: [
+            {
+                x: chartdata.current_bar,
+                y: 40,
+                xref: 'x',
+                yref: 'y',
+                text: 'Current Price',
+                showarrow: true,
+                arrowhead: 16,
+                ax: 0,
+                ay: -120
+            }
+        ]
     };
     Plotly.react(kcwall, trace, layout);
 };
@@ -65,7 +88,21 @@ Plotly.newPlot(kcwall, [{
     width: 1600,
     paper_bgcolor: 'rgba(19, 23, 34, 1)',
     plot_bgcolor: 'rgba(19, 23, 34, 1)',
-    title: 'Walls',
+    font: {
+        size: 16,
+        color: 'rgba(255, 255, 255, 0.8)'
+    },
+    title: '',
+    xaxis: {
+        title: 'Lines',
+        tickmode: 'array',
+        tickvals: [0, 10, 20, 30, 40],
+        ticktext: [600, 300, 0, -300, -600],
+        ticklabelposition: "outside"
+    },
+    yaxis: {
+        title: 'BTC'
+    },
 });
 
 fetchBook();
