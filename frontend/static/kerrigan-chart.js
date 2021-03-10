@@ -358,6 +358,14 @@ const sentryConnect = () => {
     }
 }
 
+const fetchMarkers = () => {
+    let response = await fetch('/markers');
+    if (!response.ok) {
+        console.log('Fetch failed!')
+    }
+    let data = await response.json();
+}
+
 klineConnect();
 sentryConnect();
 

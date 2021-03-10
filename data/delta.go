@@ -30,7 +30,7 @@ func NewKlineWebSocket() *websocket.Conn {
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	return c
 }

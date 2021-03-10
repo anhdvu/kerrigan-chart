@@ -65,6 +65,10 @@ func main() {
 	futuresentries := &data.SentryPredictions{}
 	futuresentries.Update()
 
+	// Initialize bot trade record data upon server start
+	botTradeRecords := &data.BotTradeRecords{}
+	botTradeRecords.Update()
+
 	// Initialize a new Chi router
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -74,6 +78,7 @@ func main() {
 	r.Get("/ws", wsHandler)
 	r.Get("/history", setJsonHeaders(handler.MakeHistoryHandler(currentsentries)))
 	r.Get("/sentry", setJsonHeaders(handler.MakePredictionHandler(futuresentries)))
+	r.Get("/btr", setJsonHeaders(handler.MakeBotTradeRecordHandler(botTradeRecords)))
 	handler.FileServer(r, "/", config.FrontendDir)
 
 	// Initialize a custom HTTP server

@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"kerrigan-chart/config"
 	"kerrigan-chart/util"
 	"log"
-	"sort"
+	"os"
 	"sync"
 	"time"
 )
@@ -53,7 +52,7 @@ func (ss *Sentries) Update() {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
-	raw, err := ioutil.ReadFile(config.HistorySentryFile)
+	raw, err := os.ReadFile(config.HistorySentryFile)
 	if err != nil {
 		log.Panicf("PANIC: Error reading file %v\nError detail: %v\n", config.HistorySentryFile, err)
 	}
@@ -91,53 +90,6 @@ func (ss *Sentries) GetCurrentSentry() *sentry {
 	return &ss.d[len(ss.d)-1]
 }
 
-func (ss *Sentries) GetTrend(h uint) {
-	var nCount, pCount, zCount int
-	var trend int
-	var TrendMax, TrendMin int
-	TrendMax = int(h)*6 - 1
-	TrendMin = -1 * TrendMax
-	border := float64(h)
-
-	ss.mu.Lock()
-	s := ss.d[len(ss.d)-int(h)*6:]
-	ss.mu.Unlock()
-
-	for i := 0; i < len(s)-1; i++ {
-		if s[i+1].Value-s[i].Value > border {
-			trend++
-			pCount++
-		} else if s[i+1].Value-s[i].Value < -1*border {
-			trend--
-			nCount++
-		} else {
-			trend = trend + 0
-			zCount++
-		}
-	}
-	fmt.Printf("Trend %vh: %v (%v -> %v)\n", h, trend, TrendMin, TrendMax)
-	countSlice := []int{nCount, pCount, zCount}
-	sort.Ints(countSlice)
-	max := countSlice[len(countSlice)-1]
-	switch max {
-	case nCount:
-		fmt.Println("Count: bear")
-	case pCount:
-		fmt.Println("Count: bull")
-	case zCount:
-		fmt.Println("Count: sideway")
-	}
-
-	trendDiff := s[len(s)-1].Value - s[0].Value
-	if trendDiff > float64(h*36) {
-		fmt.Printf("Trend difference: bull - %v\n", trendDiff)
-	} else if trendDiff < float64(-1*int(h*36)) {
-		fmt.Printf("Trend difference: bear - %v\n", trendDiff)
-	} else {
-		fmt.Printf("Trend difference: sideway - %v\n", trendDiff)
-	}
-}
-
 func (s *sentry) CalculateDynamicDelta(price float64) (dyde float64, safe float64) {
 	dyde = s.Value - price
 	safe = (dyde + 900) / 1800
@@ -168,7 +120,7 @@ func (sp *SentryPredictions) Get() []SentryPrediction {
 func (sp *SentryPredictions) Update() {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
-	raw, err := ioutil.ReadFile(config.SentryPredictionFile)
+	raw, err := os.ReadFile(config.SentryPredictionFile)
 	if err != nil {
 		log.Panicf("PANIC: Error reading file %v\nError detail: %v\n", config.SentryPredictionFile, err)
 	}

@@ -12,4 +12,5 @@ var (
 	FrontendDir          = "frontend"
 	HistorySentryFile    = filepath.Join(KerriganDir, "historical_delta.txt")
 	SentryPredictionFile = filepath.Join(KerriganDir, "checker.txt")
+	MultiSaTradeRecords  = filepath.Join(KerriganDir, "endpoints", "multisa", "trade_history.txt")
 )
