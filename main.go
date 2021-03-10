@@ -56,6 +56,7 @@ func main() {
 	// Initilize 2 channels to communicate file update signals
 	checkerChannel := make(chan struct{})
 	historicalSentryChannel := make(chan struct{})
+	multisaChannel := make(chan struct{})
 
 	// Initialize current sentry data upon server start
 	currentsentries := &data.Sentries{}
@@ -120,12 +121,16 @@ func main() {
 			case <-historicalSentryChannel:
 				currentsentries.Update()
 				log.Printf("New current sentry value: %+v", currentsentries.GetCurrentSentry())
+			case <-multisaChannel:
+				botTradeRecords.Update()
+				log.Printf("New trade was added to trade history file.")
 			}
 		}
 	}()
 
 	go util.WatchFile(config.SentryPredictionFile, checkerChannel, 6)
 	go util.WatchFile(config.HistorySentryFile, historicalSentryChannel, 6)
+	go util.WatchFile(config.MultiSaTradeRecords, multisaChannel, 6)
 
 	go func() {
 		log.Println("Server v0.5.8 listens on port", s.Addr)
