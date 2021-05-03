@@ -1,6 +1,5 @@
 const title = document.getElementById('title');
 const legend = document.getElementById('legend');
-const dyde = document.getElementById('dyde');
 function convertTime(t) {
     const now = new Date(t);
     return now.toUTCString().substr(17, 8);
@@ -310,8 +309,6 @@ const sentryConnect = () => {
                     continue
                 }
             }
-        } else if (data.m == 'dyde') {
-            dyde.textContent = data.d.v.toFixed(2) + " - SAFE BET " + data.d.e.toFixed(4) * 100 + "%";
         } else {
             console.log('ping');
         }

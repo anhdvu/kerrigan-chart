@@ -39,7 +39,10 @@ func writer(mq <-chan *data.WsMsg) {
 	for {
 		msg := <-mq
 		for client := range clients {
-			client.WriteJSON(msg)
+			if err := client.WriteJSON(msg); err != nil {
+				log.Printf("%v client is having some issue.\n", client)
+				continue
+			}
 		}
 	}
 }
@@ -88,23 +91,6 @@ func main() {
 		Handler: r,
 	}
 
-	// Initialize a websocket client used to retrieve current BTC-USDT price
-	wsConn := data.NewKlineWebSocket()
-	go func(wsc *websocket.Conn, ss *data.Sentries) {
-		for {
-			_, msg, err := wsc.ReadMessage()
-			if err != nil {
-				log.Println(err)
-			}
-			price := data.GetCurrentPrice(msg)
-			dyde := &data.WsMsg{}
-			dyde.M = "dyde"
-			dyde.D.T = time.Now().Unix()
-			dyde.D.V, dyde.D.E = ss.GetCurrentSentry().CalculateDynamicDelta(price)
-			msgQ <- dyde
-		}
-	}(wsConn, currentsentries)
-
 	go writer(msgQ)
 
 	go func() {
@@ -133,7 +119,7 @@ func main() {
 	go util.WatchFile(config.MultiSaTradeRecords, multisaChannel, 6)
 
 	go func() {
-		log.Println("Server v0.5.8 listens on port", s.Addr)
+		log.Println("Server v0.5.9 listens on port", s.Addr)
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)

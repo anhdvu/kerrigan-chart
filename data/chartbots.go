@@ -10,14 +10,14 @@ import (
 )
 
 type bot struct {
-	Name   string
-	Trades []trade
+	Name   string  `json:"name"`
+	Trades []trade `json:"trades"`
 }
 
 type trade struct {
-	Time   string
-	Price  float64
-	Action string
+	Time   string  `json:"time"`
+	Price  float64 `json:"price"`
+	Action string  `json:"action"`
 }
 
 type BotTradeRecords struct {

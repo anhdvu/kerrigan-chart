@@ -1,13 +1,44 @@
 const title = document.getElementById('title');
 const legend = document.getElementById('legend');
 const dyde = document.getElementById('dyde');
-function convertTime(t) {
+function convertEpochtoTimeString(t) {
     const now = new Date(t);
-    return now.toUTCString().substr(17, 8);
+    return now.toUTCString().substring(17, 25);
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function compare(a, b) {
+    if (a.time < b.time) {
+        return -1;
+    }
+    if (a.time > b.time) {
+        return 1;
+    }
+    return 0;
+}
+
+function dateString2Epoch(ds) {
+    const year = parseInt(ds.substring(0, 4));
+    const month = parseInt(ds.substring(5, 7)) - 1;
+    const date = parseInt(ds.substring(8, 10));
+    const hour = parseInt(ds.substring(11, 13));
+    const minute = parseInt(ds.substring(14, 16));
+    const second = 0;
+    const time = Date.UTC(year, month, date, hour, minute, second)
+    return time
 }
 
 const tableRecords = [];
 const table5m = document.getElementById('timeframe-5m');
+const table_sa1_activetrade = document.getElementById('sa1-activetrade');
+const table_sa2_activetrade = document.getElementById('sa2-activetrade');
+const table_sa3_activetrade = document.getElementById('sa3-activetrade');
+const table_sa1_recenttrades = document.getElementById('sa1-recenttrades');
+const table_sa2_recenttrades = document.getElementById('sa2-recenttrades');
+const table_sa3_recenttrades = document.getElementById('sa3-recenttrades');
 
 // Create base chart
 const chart = LightweightCharts.createChart(document.getElementById('kchart'), {
@@ -181,7 +212,7 @@ const fill5mRecordTable = async () => {
     let table5mRecords = []
     for (let e of tempRecordData) {
         table5mRecords.push({
-            startTime: convertTime(e[0]),
+            startTime: convertEpochtoTimeString(e[0]),
             open: parseFloat(e[1]).toFixed(2),
             price: parseFloat(e[4]).toFixed(2),
             vol: parseFloat(e[5]).toFixed(3),
@@ -245,7 +276,6 @@ setInterval(function () { fill5mRecordTable() }, 30 * 1000);
 // ###########################
 // Websocket to get live data
 // ###########################
-const tf5mtds = document.getElementsByClassName('stats 5m');
 const klineConnect = () => {
     const baseURL = 'wss://stream.binance.com:9443';
     const kline5mStreamName = 'btcusdt@kline_5m';
@@ -289,27 +319,27 @@ const klineConnect = () => {
         candleSeries.update(rtCandlestickPrice);
         volumeSeries.update(rtVolumeData);
         title.textContent = 'AESXII Chart - ' + parseFloat(data.k.c).toFixed(2);
-        tf5mtds[1].innerHTML = '<p>' + convertTime(data.k.t) + '</p>';
-        tf5mtds[2].innerHTML = '<p>' + parseFloat(data.k.c).toFixed(2) + '</p>';
+        table5m.rows[1].cells[0].innerHTML = '<p>' + convertEpochtoTimeString(data.k.t) + '</p>';
+        table5m.rows[1].cells[1].innerHTML = '<p>' + parseFloat(data.k.c).toFixed(2) + '</p>';
         if (data.k.c < data.k.o) {
-            tf5mtds[2].style.backgroundColor = 'rgba(255,82,82, 0.8)';
+            table5m.rows[1].cells[1].style.backgroundColor = 'rgba(255,82,82, 0.8)';
         } else {
-            tf5mtds[2].style.backgroundColor = 'rgba(0, 150, 136, 0.8)';
+            table5m.rows[1].cells[1].style.backgroundColor = 'rgba(0, 150, 136, 0.8)';
         }
 
-        tf5mtds[3].innerHTML = '<p>' + parseFloat(data.k.v).toFixed(3) + '</p>';
+        table5m.rows[1].cells[2].innerHTML = '<p>' + parseFloat(data.k.v).toFixed(3) + '</p>';
         if (data.k.v > 399.0) {
-            tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.9)';
+            table5m.rows[1].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.9)';
         } else if (data.k.v > 199.0) {
-            tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.6)';
+            table5m.rows[1].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.6)';
         } else if (data.k.v > 99.0) {
-            tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.3)';
+            table5m.rows[1].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.3)';
         } else {
-            tf5mtds[3].style.backgroundColor = 'rgba(255, 217, 0, 0.1)';
+            table5m.rows[1].cells[2].style.backgroundColor = 'rgba(255, 217, 0, 0.1)';
         }
-        tf5mtds[4].innerHTML = '<p>' + (data.k.V / data.k.v).toFixed(4) + '</p>';
-        tf5mtds[5].innerHTML = '<p>' + data.k.n + '</p>';
-        tf5mtds[6].innerHTML = '<p>' + (data.k.c * data.k.v / data.k.n).toFixed(2) + '</p>';
+        table5m.rows[1].cells[3].innerHTML = '<p>' + (data.k.V / data.k.v).toFixed(4) + '</p>';
+        table5m.rows[1].cells[4].innerHTML = '<p>' + data.k.n + '</p>';
+        table5m.rows[1].cells[5].innerHTML = '<p>' + (data.k.c * data.k.v / data.k.n).toFixed(2) + '</p>';
     };
 }
 
@@ -346,8 +376,6 @@ const sentryConnect = () => {
 
                 line.setMarkers([{ time: data.d.t, position: 'aboveBar', color: 'rgba(255, 255, 255, 0.8)', shape: 'arrowUp', size: 0, text: '                     ' + sentryLines[sentryLineSeries.indexOf(line)] }])
             }
-        } else if (data.m == 'dyde') {
-            dyde.textContent = (-1 * data.d.v).toFixed(2);
         } else {
             console.log('ping');
         }
@@ -358,16 +386,223 @@ const sentryConnect = () => {
     }
 }
 
-const fetchMarkers = () => {
-    let response = await fetch('/markers');
+klineConnect();
+sentryConnect();
+
+const fetchMarkers = async (chart) => {
+    let response = await fetch('/btr');
+    if (!response.ok) {
+        console.log('Fetch failed!')
+    }
+    const markers = [];
+    let markerColor = '';
+    let type = '';
+    let data = await response.json();
+    for (let elem of data) {
+        if (elem.name === 'sa1') {
+            markerColor = 'rgb(0, 255, 16)';
+            type = 'Fast';
+            document.getElementById('sa1-trade-number').textContent = `Trades: ${Math.ceil(elem.trades.length / 2)}`;
+            if (elem.trades[elem.trades.length - 1].action === 'buy') {
+                table_sa1_activetrade.rows[1].cells[0].textContent = elem.trades[elem.trades.length - 1].time;
+                table_sa1_activetrade.rows[1].cells[1].textContent = elem.trades[elem.trades.length - 1].action;
+                table_sa1_activetrade.rows[1].cells[2].textContent = elem.trades[elem.trades.length - 1].price;
+                for (let i = 1; i < 5; i++) {
+                    table_sa1_recenttrades.rows[i].cells[0].textContent = elem.trades[elem.trades.length - i - 1].time;
+                    table_sa1_recenttrades.rows[i].cells[1].textContent = elem.trades[elem.trades.length - i - 1].action;
+                    table_sa1_recenttrades.rows[i].cells[2].textContent = elem.trades[elem.trades.length - i - 1].price.toFixed(2);
+                    if (elem.trades[elem.trades.length - i - 1].action === 'sell') {
+                        const profit = elem.trades[elem.trades.length - i - 1].price / elem.trades[elem.trades.length - i - 2].price - 1.002;
+                        table_sa1_recenttrades.rows[i].cells[3].textContent = (profit * 100).toFixed(2) + '%';
+                        if (profit > 0) {
+                            table_sa1_recenttrades.rows[i].cells[3].style.color = 'rgb(0, 255, 16)';
+                        } else {
+                            table_sa1_recenttrades.rows[i].cells[3].style.color = 'rgb(255, 160, 163)';
+                        }
+                    }
+                }
+            } else {
+                table_sa1_activetrade.rows[1].cells[0].textContent = "N/A";
+                table_sa1_activetrade.rows[1].cells[1].textContent = "N/A";
+                table_sa1_activetrade.rows[1].cells[2].textContent = "N/A";
+                for (let i = 1; i < 5; i++) {
+                    table_sa1_recenttrades.rows[i].cells[0].textContent = elem.trades[elem.trades.length - i].time;
+                    table_sa1_recenttrades.rows[i].cells[1].textContent = elem.trades[elem.trades.length - i].action;
+                    table_sa1_recenttrades.rows[i].cells[2].textContent = elem.trades[elem.trades.length - i].price.toFixed(2);
+                    if (elem.trades[elem.trades.length - i].action === 'sell') {
+                        const profit = elem.trades[elem.trades.length - i].price / elem.trades[elem.trades.length - i - 1].price - 1.002;
+                        table_sa1_recenttrades.rows[i].cells[3].textContent = (profit * 100).toFixed(2) + '%';
+                        if (profit > 0) {
+                            table_sa1_recenttrades.rows[i].cells[3].style.color = 'rgb(0, 255, 16)';
+                        } else {
+                            table_sa1_recenttrades.rows[i].cells[3].style.color = 'rgb(255, 160, 163)';
+                        }
+                    }
+                }
+            }
+        } else if (elem.name === 'sa2') {
+            markerColor = 'rgb(255, 248, 0)';
+            type = 'Slow';
+            document.getElementById('sa2-trade-number').textContent = `Trades: ${Math.ceil(elem.trades.length / 2)}`;
+            if (elem.trades[elem.trades.length - 1].action === 'buy') {
+                table_sa2_activetrade.rows[1].cells[0].textContent = elem.trades[elem.trades.length - 1].time;
+                table_sa2_activetrade.rows[1].cells[1].textContent = elem.trades[elem.trades.length - 1].action;
+                table_sa2_activetrade.rows[1].cells[2].textContent = elem.trades[elem.trades.length - 1].price;
+                for (let i = 1; i < 5; i++) {
+                    table_sa2_recenttrades.rows[i].cells[0].textContent = elem.trades[elem.trades.length - i - 1].time;
+                    table_sa2_recenttrades.rows[i].cells[1].textContent = elem.trades[elem.trades.length - i - 1].action;
+                    table_sa2_recenttrades.rows[i].cells[2].textContent = elem.trades[elem.trades.length - i - 1].price.toFixed(2);
+                    if (elem.trades[elem.trades.length - i - 1].action === 'sell') {
+                        const profit = elem.trades[elem.trades.length - i - 1].price / elem.trades[elem.trades.length - i - 2].price - 1.002;
+                        table_sa2_recenttrades.rows[i].cells[3].textContent = (profit * 100).toFixed(2) + '%';
+                        if (profit > 0) {
+                            table_sa2_recenttrades.rows[i].cells[3].style.color = 'rgb(0, 255, 16)';
+                        } else {
+                            table_sa2_recenttrades.rows[i].cells[3].style.color = 'rgb(255, 160, 163)';
+                        }
+                    }
+                }
+            } else {
+                table_sa2_activetrade.rows[1].cells[0].textContent = "N/A";
+                table_sa2_activetrade.rows[1].cells[1].textContent = "N/A";
+                table_sa2_activetrade.rows[1].cells[2].textContent = "N/A";
+                for (let i = 1; i < 5; i++) {
+                    table_sa2_recenttrades.rows[i].cells[0].textContent = elem.trades[elem.trades.length - i].time;
+                    table_sa2_recenttrades.rows[i].cells[1].textContent = elem.trades[elem.trades.length - i].action;
+                    table_sa2_recenttrades.rows[i].cells[2].textContent = elem.trades[elem.trades.length - i].price.toFixed(2);
+                    if (elem.trades[elem.trades.length - i].action === 'sell') {
+                        const profit = elem.trades[elem.trades.length - i].price / elem.trades[elem.trades.length - i - 1].price - 1.002;
+                        table_sa2_recenttrades.rows[i].cells[3].textContent = (profit * 100).toFixed(2) + '%';
+                        if (profit > 0) {
+                            table_sa2_recenttrades.rows[i].cells[3].style.color = 'rgb(0, 255, 16)';
+                        } else {
+                            table_sa2_recenttrades.rows[i].cells[3].style.color = 'rgb(255, 160, 163)';
+                        }
+                    }
+                }
+            }
+        } else if (elem.name === 'sa3') {
+            markerColor = 'rgb(255, 255, 247)';
+            type = 'Hodl';
+            document.getElementById('sa3-trade-number').textContent = `Trades: ${Math.ceil(elem.trades.length / 2)}`;
+            if (elem.trades[elem.trades.length - 1].action === 'buy') {
+                table_sa3_activetrade.rows[1].cells[0].textContent = elem.trades[elem.trades.length - 1].time;
+                table_sa3_activetrade.rows[1].cells[1].textContent = elem.trades[elem.trades.length - 1].action;
+                table_sa3_activetrade.rows[1].cells[2].textContent = elem.trades[elem.trades.length - 1].price;
+                for (let i = 1; i < 5; i++) {
+                    table_sa3_recenttrades.rows[i].cells[0].textContent = elem.trades[elem.trades.length - i - 1].time;
+                    table_sa3_recenttrades.rows[i].cells[1].textContent = elem.trades[elem.trades.length - i - 1].action;
+                    table_sa3_recenttrades.rows[i].cells[2].textContent = elem.trades[elem.trades.length - i - 1].price.toFixed(2);
+                    if (elem.trades[elem.trades.length - i - 1].action === 'sell') {
+                        const profit = elem.trades[elem.trades.length - i - 1].price / elem.trades[elem.trades.length - i - 2].price - 1.002;
+                        table_sa3_recenttrades.rows[i].cells[3].textContent = (profit * 100).toFixed(2) + '%';
+                        if (profit > 0) {
+                            table_sa3_recenttrades.rows[i].cells[3].style.color = 'rgb(0, 255, 16)';
+                        } else {
+                            table_sa3_recenttrades.rows[i].cells[3].style.color = 'rgb(255, 160, 163)';
+                        }
+                    }
+                }
+            } else {
+                table_sa3_activetrade.rows[1].cells[0].textContent = "N/A";
+                table_sa3_activetrade.rows[1].cells[1].textContent = "N/A";
+                table_sa3_activetrade.rows[1].cells[2].textContent = "N/A";
+                for (let i = 1; i < 5; i++) {
+                    table_sa3_recenttrades.rows[i].cells[0].textContent = elem.trades[elem.trades.length - i].time;
+                    table_sa3_recenttrades.rows[i].cells[1].textContent = elem.trades[elem.trades.length - i].action;
+                    table_sa3_recenttrades.rows[i].cells[2].textContent = elem.trades[elem.trades.length - i].price.toFixed(2);
+                    if (elem.trades[elem.trades.length - i].action === 'sell') {
+                        const profit = elem.trades[elem.trades.length - i].price / elem.trades[elem.trades.length - i - 1].price - 1.002;
+                        table_sa3_recenttrades.rows[i].cells[3].textContent = (profit * 100).toFixed(2) + '%';
+                        if (profit > 0) {
+                            table_sa3_recenttrades.rows[i].cells[3].style.color = 'rgb(0, 255, 16)';
+                        } else {
+                            table_sa3_recenttrades.rows[i].cells[3].style.color = 'rgb(255, 160, 163)';
+                        }
+                    }
+                }
+            }
+        }
+
+        for (let i of elem.trades) {
+            if (i.action === 'buy') {
+                markers.push({
+                    time: dateString2Epoch(i.time) / 1000,
+                    position: 'belowBar',
+                    color: markerColor,
+                    shape: 'arrowUp',
+                    text: '',
+                    size: 2,
+                })
+            } else if (i.action === 'sell') {
+                markers.push({
+                    time: dateString2Epoch(i.time) / 1000,
+                    position: 'aboveBar',
+                    color: markerColor,
+                    shape: 'arrowDown',
+                    text: '',
+                    size: 2,
+                })
+            }
+        }
+    }
+
+    markers.sort(compare)
+    chart.setMarkers(markers)
+}
+
+const fetchExtra = async () => {
+    let response = await fetch('/multisa/info?sa=sa1&sa=sa2&sa=sa3');
     if (!response.ok) {
         console.log('Fetch failed!')
     }
     let data = await response.json();
+    const info = data.message;
+
+    const roi = [...info.matchAll(/total profit: (\-?\d+\.\d+)/g)];
+    document.getElementById('sa1-roi').textContent = `ROI: ${roi[0][1]}%`;
+    document.getElementById('sa2-roi').textContent = `ROI: ${roi[1][1]}%`;
+    document.getElementById('sa3-roi').textContent = `ROI: ${roi[2][1]}%`;
+
+    const sl = [...info.matchAll(/stoploss price: (\d+\.\d+)/g)];
+    if (table_sa1_activetrade.rows[1].cells[1].textContent === 'buy') {
+        table_sa1_activetrade.rows[2].cells[1].textContent = `SL`;
+        table_sa1_activetrade.rows[2].cells[2].textContent = `${parseFloat(sl[0][1]).toFixed(2)}`;
+    }
+    if (table_sa2_activetrade.rows[1].cells[1].textContent === 'buy') {
+        table_sa2_activetrade.rows[2].cells[1].textContent = `SL`;
+        table_sa2_activetrade.rows[2].cells[2].textContent = `${parseFloat(sl[1][1]).toFixed(2)}`;
+    }
+    if (table_sa3_activetrade.rows[1].cells[1].textContent === 'buy') {
+        table_sa3_activetrade.rows[2].cells[1].textContent = `SL`;
+        table_sa3_activetrade.rows[2].cells[2].textContent = `${parseFloat(sl[2][1]).toFixed(2)}`;
+    }
+
+    const sd = [...info.matchAll(/start date: (\d{2}\/\d{2}\/\d{4})/g)];
+    const elapsedDays = [];
+    for (let e of sd) {
+        let start = new Date(parseInt(e[1].substring(6, 10)), parseInt(e[1].substring(3, 5)) - 1, parseInt(e[1].substring(0, 2)));
+        let current = new Date();
+        let elapsed = Math.floor((current - start) / 86400000);
+        elapsedDays.push(elapsed);
+    }
+    document.getElementById('sa1-day').textContent = `Day: ${elapsedDays[0]}`;
+    document.getElementById('sa2-day').textContent = `Day: ${elapsedDays[1]}`;
+    document.getElementById('sa3-day').textContent = `Day: ${elapsedDays[2]}`;
 }
 
-klineConnect();
-sentryConnect();
+fetchMarkers(candleSeries);
+fetchExtra();
+
+setInterval(() => {
+    fetchMarkers(candleSeries);
+    fetchExtra();
+}, 300 * 1000);
+
+setInterval(() => {
+    fetchExtra();
+}, 300 * 1000);
+
 
 // OHLC with crosshair move
 chart.subscribeCrosshairMove(function (param) {
@@ -389,4 +624,4 @@ chart.subscribeCrosshairMove(function (param) {
         catch (err) {
         }
     }
-});
+})

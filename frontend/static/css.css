@@ -1,3 +1,4 @@
+/* base styling */
 body {
   background-color: rgba(19, 23, 34, 0.8);
   font-family: Verdana, Geneva, Tahoma, sans-serif;
@@ -15,6 +16,7 @@ p {
   margin: 0;
 }
 
+/* kchart element styling */
 #legend {
   color: rgba(255, 255, 255, 0.8);
   width: 650px;
@@ -41,16 +43,93 @@ p {
   margin: 0px;
 }
 
+/* book wall */
 #kchart-wall {
   padding: 0px;
   margin: 0px;
 }
 
-#live-stats {
-  margin: 20px 0px;
+/* Bot stats */
+#bot-info-panel {
   max-width: 1600px;
+  margin: 10px 0;
   padding: 0 0 10px 0;
+  color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(19, 23, 34, 1);
+}
+
+#bot-info-panel h2 {
+  text-align: center;
   margin: 0;
+  padding: 0;
+}
+
+.bot {
+  width: 515px;
+  display: inline-block;
+  margin: 0 5px;
+  padding: 0;
+}
+
+.bot-roi-div, .bot-info-div {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+}
+
+.bot-roi-div {
+  width: 288px;
+}
+
+.bot-info-div {
+  width: 212px;
+}
+
+p.bot-roi {
+  font-size: 36px;
+  margin: 0 0 0 5px;
+  padding: 0;
+}
+
+.bot-info-div p {
+  margin: 0;
+  padding: 0;
+}
+
+.bot table {
+  width: 515px;
+  margin: 0;
+  padding: 0;
+  border-collapse: collapse;
+}
+
+.bot th, 
+.bot tr, 
+.bot td {
+  text-align: center;
+}
+
+.bot td.trade-time {
+  width: 240px;
+}
+
+.bot td.trade-action {
+  width: 115px;
+}
+
+.bot caption {
+  background-color: rgba(0, 150, 235,1);
+}
+
+.bot tr:nth-child(odd) {
+  background-color:rgba(28, 29, 34, 1);
+}
+
+/* Live stats of trading activities*/
+#live-stats {
+  margin: 0;
+  max-width: 1600px;
+  padding: 10px 0px 10px 0;
   color: rgba(255, 255, 255, 0.8);
   background-color: rgba(19, 23, 34, 1);
 }
