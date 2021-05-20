@@ -44,7 +44,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	clients[ws] = true
 }
 
-func handlerWS(clients map[*websocket.Conn]bool) http.HandlerFunc {
+func handleWSConn(clients map[*websocket.Conn]bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ws, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -78,12 +78,12 @@ func main() {
 	msgQ := make(chan *data.WsMsg, 100)
 
 	// Initilize 2 channels to communicate file update signals
-	btcCheckerChannel := make(chan struct{})
-	btcHistoricalSentryChannel := make(chan struct{})
-	ethCheckerChannel := make(chan struct{})
-	ethHistoricalSentryChannel := make(chan struct{})
-	bnbCheckerChannel := make(chan struct{})
-	bnbHistoricalSentryChannel := make(chan struct{})
+	btcPredictionChannel := make(chan struct{})
+	btcSentryHistoryChannel := make(chan struct{})
+	ethPredictionChannel := make(chan struct{})
+	ethSentryHistoryChannel := make(chan struct{})
+	bnbPredictionChannel := make(chan struct{})
+	bnbSentryHistoryChannel := make(chan struct{})
 	multisaChannel := make(chan struct{})
 
 	// Initialize current sentry data upon server start
@@ -113,9 +113,9 @@ func main() {
 
 	// Set up routes for the router
 	r.Get("/ws", wsHandler)
-	r.Get("/ws_btc", handlerWS(wsClientsBTC))
-	r.Get("/ws_eth", handlerWS(wsClientsETH))
-	r.Get("/ws_bnb", handlerWS(wsClientsBNB))
+	r.Get("/ws_btc", handleWSConn(wsClientsBTC))
+	r.Get("/ws_eth", handleWSConn(wsClientsETH))
+	r.Get("/ws_bnb", handleWSConn(wsClientsBNB))
 	r.Get("/history_btc", setJSONHeaders(handler.MakeHistoryHandler(btcCurrentSentries)))
 	r.Get("/sentry_btc", setJSONHeaders(handler.MakePredictionHandler(btcFutureSentries)))
 	r.Get("/history_eth", setJSONHeaders(handler.MakeHistoryHandler(ethCurrentSentries)))
@@ -136,17 +136,17 @@ func main() {
 	go func() {
 		for {
 			select {
-			case <-btcCheckerChannel:
+			case <-btcPredictionChannel:
 				handleCheckerChannel(btcFutureSentries, config.SentryPredictionFile_BTC, msgQ, btc)
-			case <-ethCheckerChannel:
+			case <-ethPredictionChannel:
 				handleCheckerChannel(ethFutureSentries, config.SentryPredictionFile_ETH, msgQ, eth)
-			case <-bnbCheckerChannel:
+			case <-bnbPredictionChannel:
 				handleCheckerChannel(bnbFutureSentries, config.SentryPredictionFile_BNB, msgQ, bnb)
-			case <-btcHistoricalSentryChannel:
+			case <-btcSentryHistoryChannel:
 				handleHistoryChannel(btcCurrentSentries, config.HistorySentryFile_BTC)
-			case <-ethHistoricalSentryChannel:
+			case <-ethSentryHistoryChannel:
 				handleHistoryChannel(btcCurrentSentries, config.HistorySentryFile_ETH)
-			case <-bnbHistoricalSentryChannel:
+			case <-bnbSentryHistoryChannel:
 				handleHistoryChannel(btcCurrentSentries, config.HistorySentryFile_BNB)
 			case <-multisaChannel:
 				botTradeRecords.Update()
@@ -155,12 +155,12 @@ func main() {
 		}
 	}()
 
-	go util.WatchFile(config.SentryPredictionFile_BTC, btcCheckerChannel, 6)
-	go util.WatchFile(config.HistorySentryFile_BTC, btcHistoricalSentryChannel, 6)
-	go util.WatchFile(config.SentryPredictionFile_ETH, ethCheckerChannel, 6)
-	go util.WatchFile(config.HistorySentryFile_ETH, ethHistoricalSentryChannel, 6)
-	go util.WatchFile(config.SentryPredictionFile_BNB, bnbCheckerChannel, 6)
-	go util.WatchFile(config.HistorySentryFile_BNB, bnbHistoricalSentryChannel, 6)
+	go util.WatchFile(config.SentryPredictionFile_BTC, btcPredictionChannel, 6)
+	go util.WatchFile(config.HistorySentryFile_BTC, btcSentryHistoryChannel, 6)
+	go util.WatchFile(config.SentryPredictionFile_ETH, ethPredictionChannel, 6)
+	go util.WatchFile(config.HistorySentryFile_ETH, ethSentryHistoryChannel, 6)
+	go util.WatchFile(config.SentryPredictionFile_BNB, bnbPredictionChannel, 6)
+	go util.WatchFile(config.HistorySentryFile_BNB, bnbSentryHistoryChannel, 6)
 	go util.WatchFile(config.MultiSaTradeRecords, multisaChannel, 6)
 
 	go func() {
@@ -184,7 +184,7 @@ func main() {
 	s.Shutdown(ctx)
 }
 
-func setJSONHeaders(fn http.HandlerFunc) http.HandlerFunc {
+func setJSONHeaders(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if origin := r.Header.Get("Origin"); origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -192,7 +192,7 @@ func setJSONHeaders(fn http.HandlerFunc) http.HandlerFunc {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		fn(w, r)
+		next(w, r)
 	}
 }
 

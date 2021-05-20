@@ -12,10 +12,10 @@ clean:
 	rm *.log
 deployfe:
 	@echo "Uploading frontend files to production server..."
-	scp -P 1006 -r frontend/ trym@dace.dev:/home/trym/devev/to_the_moon/kerrigan-chart/
+	scp -P 1006 -r frontend/ trym@dace.dev:/home/trym/devev/to_the_moon/kchart/
 deploybe:
 	@echo "Deploying server files to production server..."
-	scp -P 1006 bin/kc trym@dace.dev:/home/trym/devev/to_the_moon/kerrigan-chart/
+	scp -P 1006 bin/kc trym@dace.dev:/home/trym/devev/to_the_moon/kchart/
 deployall:
 	@echo "Deploying all to production server..."
-	scp -P 1006 -r bin/kc frontend/ trym@dace.dev:/home/trym/devev/to_the_moon/kerrigan-chart/
+	scp -P 1006 -r bin/kc frontend/ ui/ trym@dace.dev:/home/trym/devev/to_the_moon/kchart/
