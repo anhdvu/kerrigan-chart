@@ -344,9 +344,8 @@ const klineConnect = () => {
 }
 
 // real time data for sentry series
-const sentryConnect = () => {
-    const sentryURI = 'wss://mooner.dace.dev/ws';
-    // const sentryURI = 'ws://localhost:8080/ws';
+const sentryConnect = (symbol, uri) => {
+    const sentryURI = uri;
     const sentrySocket = new WebSocket(sentryURI);
 
     sentrySocket.onopen = (event) => {
@@ -362,7 +361,7 @@ const sentryConnect = () => {
     }
     sentrySocket.onmessage = (message) => {
         let data = JSON.parse(message.data);
-        if (data.m == 'sentry') {
+        if (data.m === 'sentry' && data.s === symbol) {
             sentrySeries.update({
                 time: data.d.t,
                 value: data.d.v
@@ -387,7 +386,7 @@ const sentryConnect = () => {
 }
 
 klineConnect();
-sentryConnect();
+sentryConnect('wss://mooner.dace.dev/ws');
 
 const fetchMarkers = async (chart) => {
     let response = await fetch('/btr');

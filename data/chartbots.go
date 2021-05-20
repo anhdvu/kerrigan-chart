@@ -31,13 +31,14 @@ func (btr *BotTradeRecords) Get() []bot {
 	return btr.d
 }
 
-func (btr *BotTradeRecords) Update() {
+func (btr *BotTradeRecords) Update() error {
 	btr.mu.Lock()
 	defer btr.mu.Unlock()
 
 	raw, err := os.ReadFile(config.MultiSaTradeRecords)
 	if err != nil {
 		log.Panicf("PANIC: Error reading file %v\nError detail: %v\n", config.MultiSaTradeRecords, err)
+		return err
 	}
 
 	data := make([]bot, 0)
@@ -45,7 +46,7 @@ func (btr *BotTradeRecords) Update() {
 	if err != nil {
 		log.Printf("ERROR: Error during JSON sentry history unmarshaling\nError detail: %v\n", err)
 		log.Println(string(raw))
-		return
+		return err
 	}
 
 	btr.d = make([]bot, len(data))
@@ -53,14 +54,12 @@ func (btr *BotTradeRecords) Update() {
 		btr.d[i].Name = e.Name
 		btr.d[i].Trades = e.Trades
 	}
+	return nil
 }
 
-func (btr *BotTradeRecords) ToJSON(w io.Writer) {
+func (btr *BotTradeRecords) ToJSON(w io.Writer) error {
 	btr.mu.Lock()
 	defer btr.mu.Unlock()
 	d := json.NewEncoder(w)
-	err := d.Encode(btr.d)
-	if err != nil {
-		log.Panic(err)
-	}
+	return d.Encode(btr.d)
 }

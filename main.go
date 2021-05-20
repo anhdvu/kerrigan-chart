@@ -26,6 +26,15 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+var (
+	wsClientsBTC = make(map[*websocket.Conn]bool)
+	wsClientsETH = make(map[*websocket.Conn]bool)
+	wsClientsBNB = make(map[*websocket.Conn]bool)
+	btc          = "btc"
+	eth          = "eth"
+	bnb          = "bnb"
+)
+
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -35,12 +44,24 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	clients[ws] = true
 }
 
+func handlerWS(clients map[*websocket.Conn]bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ws, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// register client to a map of websocket clients
+		clients[ws] = true
+	}
+}
+
 func writer(mq <-chan *data.WsMsg) {
 	for {
 		msg := <-mq
 		for client := range clients {
 			if err := client.WriteJSON(msg); err != nil {
 				log.Printf("%v client is having some issue.\n", client)
+				client.Close()
 				continue
 			}
 		}
@@ -57,17 +78,29 @@ func main() {
 	msgQ := make(chan *data.WsMsg, 100)
 
 	// Initilize 2 channels to communicate file update signals
-	checkerChannel := make(chan struct{})
-	historicalSentryChannel := make(chan struct{})
+	btcCheckerChannel := make(chan struct{})
+	btcHistoricalSentryChannel := make(chan struct{})
+	ethCheckerChannel := make(chan struct{})
+	ethHistoricalSentryChannel := make(chan struct{})
+	bnbCheckerChannel := make(chan struct{})
+	bnbHistoricalSentryChannel := make(chan struct{})
 	multisaChannel := make(chan struct{})
 
 	// Initialize current sentry data upon server start
-	currentsentries := &data.Sentries{}
-	currentsentries.Update()
+	btcCurrentSentries := &data.Sentries{}
+	btcCurrentSentries.Update(config.HistorySentryFile_BTC)
+	ethCurrentSentries := &data.Sentries{}
+	ethCurrentSentries.Update(config.HistorySentryFile_ETH)
+	bnbCurrentSentries := &data.Sentries{}
+	bnbCurrentSentries.Update(config.HistorySentryFile_BNB)
 
 	// Initialize future sentry data upon server start
-	futuresentries := &data.SentryPredictions{}
-	futuresentries.Update()
+	btcFutureSentries := &data.SentryPredictions{}
+	btcFutureSentries.Update(config.SentryPredictionFile_BTC)
+	ethFutureSentries := &data.SentryPredictions{}
+	ethFutureSentries.Update(config.SentryPredictionFile_ETH)
+	bnbFutureSentries := &data.SentryPredictions{}
+	bnbFutureSentries.Update(config.SentryPredictionFile_BNB)
 
 	// Initialize bot trade record data upon server start
 	botTradeRecords := &data.BotTradeRecords{}
@@ -80,9 +113,16 @@ func main() {
 
 	// Set up routes for the router
 	r.Get("/ws", wsHandler)
-	r.Get("/history", setJsonHeaders(handler.MakeHistoryHandler(currentsentries)))
-	r.Get("/sentry", setJsonHeaders(handler.MakePredictionHandler(futuresentries)))
-	r.Get("/btr", setJsonHeaders(handler.MakeBotTradeRecordHandler(botTradeRecords)))
+	r.Get("/ws_btc", handlerWS(wsClientsBTC))
+	r.Get("/ws_eth", handlerWS(wsClientsETH))
+	r.Get("/ws_bnb", handlerWS(wsClientsBNB))
+	r.Get("/history_btc", setJSONHeaders(handler.MakeHistoryHandler(btcCurrentSentries)))
+	r.Get("/sentry_btc", setJSONHeaders(handler.MakePredictionHandler(btcFutureSentries)))
+	r.Get("/history_eth", setJSONHeaders(handler.MakeHistoryHandler(ethCurrentSentries)))
+	r.Get("/sentry_eth", setJSONHeaders(handler.MakePredictionHandler(ethFutureSentries)))
+	r.Get("/history_bnb", setJSONHeaders(handler.MakeHistoryHandler(bnbCurrentSentries)))
+	r.Get("/sentry_bnb", setJSONHeaders(handler.MakePredictionHandler(bnbFutureSentries)))
+	r.Get("/btr", setJSONHeaders(handler.MakeBotTradeRecordHandler(botTradeRecords)))
 	handler.FileServer(r, "/", config.FrontendDir)
 
 	// Initialize a custom HTTP server
@@ -96,30 +136,35 @@ func main() {
 	go func() {
 		for {
 			select {
-			case <-checkerChannel:
-				futuresentries.Update()
-				log.Printf("New data from checker file: %+v\n", futuresentries.Get())
-				if sp, err := futuresentries.GetClosestFutureSentry(); err != nil {
-					log.Println(err)
-				} else {
-					msgQ <- sp.ToWSMessage()
-				}
-			case <-historicalSentryChannel:
-				currentsentries.Update()
-				log.Printf("New current sentry value: %+v", currentsentries.GetCurrentSentry())
+			case <-btcCheckerChannel:
+				handleCheckerChannel(btcFutureSentries, config.SentryPredictionFile_BTC, msgQ, btc)
+			case <-ethCheckerChannel:
+				handleCheckerChannel(ethFutureSentries, config.SentryPredictionFile_ETH, msgQ, eth)
+			case <-bnbCheckerChannel:
+				handleCheckerChannel(bnbFutureSentries, config.SentryPredictionFile_BNB, msgQ, bnb)
+			case <-btcHistoricalSentryChannel:
+				handleHistoryChannel(btcCurrentSentries, config.HistorySentryFile_BTC)
+			case <-ethHistoricalSentryChannel:
+				handleHistoryChannel(btcCurrentSentries, config.HistorySentryFile_ETH)
+			case <-bnbHistoricalSentryChannel:
+				handleHistoryChannel(btcCurrentSentries, config.HistorySentryFile_BNB)
 			case <-multisaChannel:
 				botTradeRecords.Update()
-				log.Printf("New trade was added to trade history file.")
+				log.Println("New trade was added to trade history file.")
 			}
 		}
 	}()
 
-	go util.WatchFile(config.SentryPredictionFile, checkerChannel, 6)
-	go util.WatchFile(config.HistorySentryFile, historicalSentryChannel, 6)
+	go util.WatchFile(config.SentryPredictionFile_BTC, btcCheckerChannel, 6)
+	go util.WatchFile(config.HistorySentryFile_BTC, btcHistoricalSentryChannel, 6)
+	go util.WatchFile(config.SentryPredictionFile_ETH, ethCheckerChannel, 6)
+	go util.WatchFile(config.HistorySentryFile_ETH, ethHistoricalSentryChannel, 6)
+	go util.WatchFile(config.SentryPredictionFile_BNB, bnbCheckerChannel, 6)
+	go util.WatchFile(config.HistorySentryFile_BNB, bnbHistoricalSentryChannel, 6)
 	go util.WatchFile(config.MultiSaTradeRecords, multisaChannel, 6)
 
 	go func() {
-		log.Println("Server v0.5.9 listens on port", s.Addr)
+		log.Println("Server v0.6 listens on port", s.Addr)
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)
@@ -135,11 +180,11 @@ func main() {
 
 	// gracefully shutdown the server, waiting max 30 seconds for current operations to complete
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	cancel()
+	defer cancel()
 	s.Shutdown(ctx)
 }
 
-func setJsonHeaders(fn http.HandlerFunc) http.HandlerFunc {
+func setJSONHeaders(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if origin := r.Header.Get("Origin"); origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -151,9 +196,18 @@ func setJsonHeaders(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// Not used for now
-func handlepanic(fn func() error) {
-	if r := recover(); r != nil {
-		log.Println("RECOVER", r)
+func handleCheckerChannel(sps *data.SentryPredictions, file string, mq chan *data.WsMsg, symbol string) {
+	sps.Update(file)
+	log.Printf("New data from checker file: %+v\n", sps.Get())
+	sp, err := sps.GetClosestFutureSentry()
+	if err != nil {
+		log.Println(err)
+		return
 	}
+	mq <- sp.ToWSMessage(symbol)
+}
+
+func handleHistoryChannel(cs *data.Sentries, file string) {
+	cs.Update(file)
+	log.Printf("New current sentry value: %+v", cs.GetCurrentSentry())
 }

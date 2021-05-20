@@ -1,0 +1,25 @@
+{{define "base"}}
+<!doctype html>
+<html lang='en'>
+
+<head>
+    <meta charset='utf-8'>
+    <title>{{template "title" .}} - AULAB</title>
+</head>
+
+<body>
+    <header>
+        <h1><a href='/aulab'>AULAB</a></h1>
+    </header>
+    <nav>
+        <a href='/aulab'>Home</a>
+    </nav>
+    <main>
+        {{template "main" .}}
+    </main>
+    <!-- Invoke the footer template -->
+    {{template "footer" .}}
+</body>
+
+</html>
+{{end}}

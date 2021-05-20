@@ -7,6 +7,9 @@ import (
 
 func MakeBotTradeRecordHandler(btr *data.BotTradeRecords) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		btr.ToJSON(w)
+		err := btr.ToJSON(w)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 	}
 }
