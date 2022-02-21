@@ -52,17 +52,19 @@ func (sp *SentryPredictions) Update(f string) error {
 func (sp *SentryPredictions) ToJSON(w io.Writer) error {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
-	d := json.NewEncoder(w)
-	return d.Encode(sp.d)
+	e := json.NewEncoder(w)
+	return e.Encode(sp.d)
 }
 
 func (sp *SentryPredictions) GetClosestFutureSentry() (*SentryPrediction, error) {
 	now := time.Now().Unix()
 	if len(sp.d) > 0 {
 		for _, e := range sp.d {
-			if util.ToEpoch(e.Time) < now {
+			t, _ := util.ToEpoch(e.Time)
+
+			if t < now {
 				log.Printf("There was a re-prediction at %v", e.Time)
-			} else if util.ToEpoch(e.Time) > now {
+			} else {
 				return &e, nil
 			}
 		}
@@ -75,6 +77,8 @@ func (sp *SentryPredictions) GetClosestFutureSentry() (*SentryPrediction, error)
 // SentryPrediction data type has 1 method
 // ToWSMessage() is a convenient method to convert a sentry prediction to a websocket message
 func (sp *SentryPrediction) ToWSMessage(symbol string) *WsMsg {
+	t, _ := util.ToEpoch(sp.Time)
+
 	msg := &WsMsg{
 		M: "sentry",
 		D: struct {
@@ -84,7 +88,7 @@ func (sp *SentryPrediction) ToWSMessage(symbol string) *WsMsg {
 			E float64 "json:\"e\""
 		}{
 			S: symbol,
-			T: util.ToEpoch(sp.Time),
+			T: t,
 			V: sp.Prediction,
 		},
 	}

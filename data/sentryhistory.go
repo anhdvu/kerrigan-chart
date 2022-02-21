@@ -57,7 +57,8 @@ func (ss *Sentries) Update(f string) error {
 
 	ss.d = make([]sentry, len(data))
 	for i, e := range data {
-		ss.d[i].Time = util.ToEpoch(e.Time)
+		t, _ := util.ToEpoch(e.Time)
+		ss.d[i].Time = t
 		ss.d[i].Value = e.Prediction
 		ss.d[i].Actual = e.Actual
 		ss.d[i].Delta = e.Prediction - e.Actual

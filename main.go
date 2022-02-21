@@ -125,6 +125,9 @@ func main() {
 	r.Get("/btr", setJSONHeaders(handler.MakeBotTradeRecordHandler(botTradeRecords)))
 	handler.FileServer(r, "/", config.FrontendDir)
 
+	r.Get("/aulab", handler.AulabIndex)
+	handler.FileServer(r, "/aulab/static", "./ui/static")
+
 	// Initialize a custom HTTP server
 	s := &http.Server{
 		Addr:    ":8080",
